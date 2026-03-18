@@ -23,8 +23,8 @@ The Controller obtains lawful basis from the Customer (or asserts it internally 
 
 For consent-based records, the Data User captures the Customer's agreement before calling the register. Identity verification must meet the standard defined in **Smart Energy Code Section I** as approved by the SEC Privacy SubCommittee. The register stores what it is told; it does not re-verify the consent.
 
-Customers can view and revoke their access records at any time via the centralised consumer portal or through the Data User's own application.
-<Info>The design of the **Central Portal** is not included in this technical design</Info>
+Customers can view and revoke their access records at any time via the centralised customer portal or through the Data User's own application.
+<Info>The design of the **Centralise Customer Portal** is not included in this technical design</Info>
 
 ```mermaid
 sequenceDiagram
@@ -88,7 +88,7 @@ The Data Provider is responsible for mapping the `duid` to its own platform acce
 Data Users can subscribe to webhook events to manage the access record lifecycle proactively. Both events are delivered to the same callback URL; the `event-type` field distinguishes them.
 
 ## Consent Withdrawal
-A Customer may withdraw consent at any time, either through the centralised consumer portal (central initiated event) or through the Data User's own application. Withdrawal flows from the Customer through the Controller and Data User before the register is updated (initiated by Data User).
+A Customer may withdraw consent at any time, either through the centralised customer portal (central initiated event) or through the Data User's own application. Withdrawal flows from the Customer through the Controller and Data User before the register is updated (initiated by Data User).
 On receipt of a withdrawal instruction, the Data User must call DELETE /access-records/{ak} immediately. The register transitions the record to REVOKED state and retains it for audit. The Data Provider will deny all subsequent data requests for that access key.
 <Note>If the Customer withdraws consent through the central service which they maybe contractually obligated to provide, the Controller/Data User has the opportunity to engage with the Customer and resolve any issues themselves</Note>
 
