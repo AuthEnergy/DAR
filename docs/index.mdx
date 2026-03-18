@@ -5,113 +5,131 @@ description: A lightweight central register of lawful customer energy data acces
 icon: database
 tag: experimental
 ---
- 
+
 <Warning>This is a practical, lightweight alternative to the full Consumer Consent Solution architecture. It records all lawful access to customer meter data — not just consent — and is presented as an open design for industry feedback.</Warning>
- 
-The register is not a consent register exclusively. It records access under any lawful basis — consent, legitimate interests, public task, legal obligation, or contract. The Central Register holds the registration only; it does not validate or enforce the legal basis claimed by the Controller 
+
+The register is not a consent register exclusively. It records access under any lawful basis — consent, legitimate interests, public task, legal obligation, or contract. The Central Register holds the registration only; it does not validate or enforce the legal basis claimed by the Controller.
 
 <Note>The Controller and Data User may be the same entity</Note>
- 
+
 Key flows:
 - [Registering an Access Record](#registering-an-access-record)
 - [Verifying an Access Record](#verifying-an-access-record)
 - [Lifecycle Notifications](#lifecycle-notifications)
- 
+
 ## Registering an Access Record
- 
+
 The Controller obtains lawful basis from the Customer (or asserts it internally for non-consent bases) and registers it with the Central Register via the Data User API. The register stores the record and returns an access key.
- 
+
 For consent-based records, the Data User captures the Customer's agreement — including identity verification — before calling the register. The register stores what it is told; it does not re-verify the consent.
- 
+
 ```mermaid
 sequenceDiagram
-    participant Customer
-    participant Controller
-    participant Data User
-    participant Central Register
- 
+    box For context
+        participant Customer
+        participant Controller
+    end
+    box In scope
+        participant DU as Data User
+        participant CR as Central Register
+    end
+
     Controller->>Customer: Terms & purpose
     Customer->>Controller: Agreement
-    Controller->>Data User: Register access
-    Data User->>Central Register: POST /access-records
-    activate Central Register
-    Central Register->>Central Register: Store record
-    Central Register->>Data User: Access key (ak)
-    deactivate Central Register
-    Data User->>Controller: Confirmed
+    Controller->>DU: Register access
+    DU->>DU: Verify Customer
+    DU->>CR: POST /access-records
+    activate CR
+    CR->>CR: Store record
+    CR->>DU: Access key (ak)
+    deactivate CR
+    DU->>Controller: Confirmed
+    Controller->>Customer: Confirmed
 ```
- 
+
 Historic records and migrations from existing consent stores can be submitted using the same endpoint.
- 
+
 ## Verifying an Access Record
- 
+
 Before releasing meter data, the Data Provider verifies the access key and — on first encounter with a new Data User — looks up the Data User's status in the directory.
- 
+
 ```mermaid
 sequenceDiagram
-    participant Controller
-    participant Data User
-    participant Data Provider
-    participant Central Register
- 
-    Controller->>Data User: Request data
-    Data User->>Data Provider: Request + access key (ak)
-    Data Provider->>Central Register: GET /access-records/{ak}
-    Central Register->>Data Provider: Record (state, data-types, duid)
-    alt New duid
-        Data Provider->>Central Register: GET /data-users/{duid}
-        Central Register->>Data Provider: Status
+    box For context
+        participant Controller
     end
-    Data Provider->>Data User: Meter data
-    Data User->>Controller: Data
+    box In scope
+        participant DU as Data User
+        participant Data Provider
+        participant CR as Central Register
+    end
+
+    Controller->>DU: Request data
+    DU->>Data Provider: Request + access key (ak)
+    Data Provider->>CR: GET /access-records/{ak}
+    CR->>Data Provider: Record (state, data-types, duid)
+    alt New duid
+        Data Provider->>CR: GET /data-users/{duid}
+        CR->>Data Provider: Status
+    end
+    Data Provider->>DU: Meter data
+    DU->>Controller: Data
 ```
- 
+
 The Data Provider is responsible for mapping the `duid` to its own platform access controls. It must deny data release if the access record is not `ACTIVE`, if the access key has expired, or if the Data User's status is `suspended` or `terminated`.
- 
+
 ## Lifecycle Notifications
- 
+
 Controllers can subscribe to webhook events to manage the access record lifecycle proactively. Both events are delivered to the same callback URL; the `event-type` field distinguishes them.
- 
+
 ### Consent Expiry
- 
+
 Fired when a consent-based access record is within the configured notification window (default 30 days) of its expiry date. The Controller should prompt the Customer to renew before access lapses.
- 
+
 ```mermaid
 sequenceDiagram
-    participant Central Register
-    participant Data User
-    participant Controller
-    participant Customer
- 
-    Central Register->>Central Register: Expiry window reached
-    Central Register->>Data User: consent.expiring
-    Data User->>Controller: Notify
+    box For context
+        participant Customer
+        participant Controller
+    end
+    box In scope
+        participant DU as Data User
+        participant CR as Central Register
+    end
+
+    CR->>CR: Expiry window reached
+    CR->>DU: consent.expiring
+    DU->>Controller: Notify
     Controller->>Customer: Renew prompt
     Customer->>Controller: Renewed
-    Controller->>Data User: Submit renewal
-    Data User->>Central Register: POST /access-records?ak={ak}
+    Controller->>DU: Submit renewal
+    DU->>CR: POST /access-records?ak={ak}
 ```
- 
+
 ### Change of Tenancy
- 
+
 Fired when a Change of Tenancy is recorded against an MPxN that has one or more active access records. The Controller must cease data collection and revoke the affected records. No new occupant PII is included in the payload.
- 
+
 ```mermaid
 sequenceDiagram
-    participant Central Register
-    participant Data User
-    participant Controller
- 
-    Central Register->>Central Register: Tenancy change recorded
-    Central Register->>Data User: tenancy.change
-    Data User->>Controller: Notify
+    box For context
+        participant Controller
+    end
+    box In scope
+        participant DU as Data User
+        participant CR as Central Register
+    end
+
+    CR->>CR: Tenancy change recorded
+    CR->>DU: tenancy.change
+    DU->>Controller: Notify
     Controller->>Controller: Cease data collection
-    Controller->>Data User: Revoke
-    Data User->>Central Register: DELETE /access-records/{ak}
+    Controller->>DU: Revoke
+    DU->>CR: DELETE /access-records/{ak}
 ```
- 
+
 ## Change Log
- 
+
 | Version | Date | Summary |
 |---------|------|---------|
 | 0.0.8 | 2026-03-18 | Added EDP directory lookup (`GET /data-users/{duid}`) and webhook subscriptions for consent expiry and tenancy change events. |
