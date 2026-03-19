@@ -439,6 +439,8 @@ paths:
       operationId: listAccessRecords
       summary: List Access Records for a Meter Point
       description: |
+        <Warning>Could be fully disabled if [Central Portal](/dar/customer-portal) is prefered mechanism</Warning>
+
         Returns access records associated with a given MPxN, registered by the
         authenticated Data User. Covers all legal bases and all lifecycle states
         unless filtered. Supports customer transparency — customers may request
