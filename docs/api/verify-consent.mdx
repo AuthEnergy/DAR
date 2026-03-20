@@ -1,8 +1,0 @@
----
-openapi: get /access-records/{ak}
-tag: experimental
----
-Enables verification of an consent token and it's relationship to the Data User (organisation wishing to access the customer data) by a Data Provider.
-Endpoint should be called by the Data Provider each time the Data User requests access and denies access if the response is negative.
-
-<Note>It is the responsibility of the Data Provider to map the Data User Id to the organisation interacting with their data platform. eg `duid_691df0c788ca043403b7fa90` is associated with a specific user account managed in the Data Provider's platform</Note>
