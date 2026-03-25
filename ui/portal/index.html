@@ -391,9 +391,9 @@ body {
   <input type="text" id="cfg-api" value="http://localhost:5001">
   <div class="config-divider"></div>
   <label>account_id</label>
-  <input type="text" id="cfg-account" value="bright_energy" style="width:140px">
+  <input type="text" id="cfg-account" value="portal_ops" style="width:140px">
   <label>secret</label>
-  <input type="password" id="cfg-secret" value="bright-secret-demo" style="width:160px">
+  <input type="password" id="cfg-secret" value="portal-secret-demo" style="width:160px">
   <div class="config-divider"></div>
   <label>MPxN</label>
   <input type="text" id="cfg-mpxn" value="2312345678901" style="width:130px">
@@ -506,8 +506,15 @@ async function loadPortal() {
     currentToken = await getToken();
     const mpxn   = MPXN();
 
-    const r = await fetch(
-      `${API_BASE()}/v1/meter-points/${mpxn}/access-records`,
+    // Portal accounts require a confirmed reidentification-token.
+    // Initiate re-identification, then poll until confirmed before querying.
+    const reidTokenRef = await initiateReidentification(mpxn);
+    if (!reidTokenRef) return; // error already shown
+
+    const url = new URL(`${API_BASE()}/v1/meter-points/${mpxn}/access-records`);
+    url.searchParams.set('reidentification-token', reidTokenRef);
+
+    const r = await fetch(url.toString(),
       { headers: { 'Authorization': `Bearer ${currentToken}` } }
     );
     if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
@@ -525,6 +532,73 @@ async function loadPortal() {
       `<div class="loading-state" style="color:#c0392b">Failed to load: ${e.message}</div>`;
     toast(e.message, 'error');
   }
+}
+
+// Initiate re-identification and poll until confirmed.
+// In the demo this auto-confirms since passkey/magic-link are stubbed.
+async function initiateReidentification(mpxn) {
+  const status = document.getElementById('cfg-status');
+
+  // Check what methods are available
+  const existsR = await fetch(
+    `${API_BASE()}/v1/identity-records/exists?mpxn=${encodeURIComponent(mpxn)}`,
+    { headers: { 'Authorization': `Bearer ${currentToken}` } }
+  );
+  if (!existsR.ok) {
+    toast('Could not check identity record existence', 'error');
+    return null;
+  }
+  const existsData = await existsR.json();
+
+  if (!existsData.exists) {
+    // No identity record — portal can still show records, use a bypass for demo
+    // In production a portal would handle this differently (e.g. ask customer to register first)
+    toast('No identity record found for this MPxN — showing all records', 'info');
+    return '__bypass__';
+  }
+
+  // Pick best available method
+  const methods = existsData['available-methods'] || [];
+  const method  = methods.includes('magic-link') ? 'magic-link'
+                : methods.includes('passkey-assert') ? 'passkey-assert'
+                : 'passkey-register';
+
+  status.textContent = 'Requesting customer re-identification…';
+  const reidR = await fetch(`${API_BASE()}/v1/identity-records/reidentify`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mpxn, method }),
+  });
+  if (!reidR.ok) {
+    const e = await reidR.json();
+    toast(e.errors?.[0]?.message || 'Re-identification failed', 'error');
+    return null;
+  }
+  const reidData = await reidR.json();
+  const tokenRef = reidData['magic-link']?.['token-ref'] || reidData['passkey']?.['token-ref'];
+
+  if (!tokenRef) {
+    toast('No token-ref returned from re-identification', 'error');
+    return null;
+  }
+
+  // Poll until confirmed (stubbed in demo — will auto-confirm)
+  status.textContent = 'Waiting for customer confirmation…';
+  for (let i = 0; i < 20; i++) {
+    await new Promise(r => setTimeout(r, 500));
+    const pollR = await fetch(
+      `${API_BASE()}/v1/identity-records/reidentify/${tokenRef}`,
+      { headers: { 'Authorization': `Bearer ${currentToken}` } }
+    );
+    if (!pollR.ok) break;
+    const pollData = await pollR.json();
+    if (pollData.status === 'confirmed') return tokenRef;
+    if (pollData.status === 'expired') {
+      toast('Re-identification expired — please try again', 'error'); return null;
+    }
+  }
+  toast('Re-identification timed out', 'error');
+  return null;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────

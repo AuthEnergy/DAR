@@ -135,11 +135,10 @@ def re_identify(ir, token_payload):
 
 
 @bp.route("/v1/identity-records/reidentify/<token_ref>", methods=["GET"])
-@require_bearer("data_user")
+@require_bearer("data_user", "portal")
 def poll_reidentify_by_token_ref(token_ref, token_payload):
     """Poll cross-DUID re-identification status by token-ref alone.
-    Data User B uses this after POST /identity-records/reidentify — they hold
-    a token-ref but not the ir key."""
+    Used by Data User B or a portal account who holds a token-ref but not the ir."""
     result, error = db.poll_reidentify_by_token_ref(token_ref, token_payload["duid"])
     if error == "FORBIDDEN":
         return err("This token was not initiated by your account", 403, "AUTH003")
@@ -149,7 +148,7 @@ def poll_reidentify_by_token_ref(token_ref, token_payload):
 
 
 @bp.route("/v1/identity-records/reidentify", methods=["POST"])
-@require_bearer("data_user")
+@require_bearer("data_user", "portal")
 def reidentify_by_mpxn(token_payload):
     """Initiate cross-DUID re-identification by MPxN.
     Used when a Data User wants to re-use an existing Identity Record created
@@ -192,7 +191,7 @@ def reidentify_by_mpxn(token_payload):
 
 
 @bp.route("/v1/identity-records/exists", methods=["GET"])
-@require_bearer("data_user")
+@require_bearer("data_user", "portal")
 def check_identity_record_exists(token_payload):
     """Check if an identity record exists for a given MPxN across all Data Users.
     Returns exists boolean and available re-identification methods.
@@ -212,7 +211,7 @@ def check_identity_record_exists(token_payload):
 
 @bp.route("/v1/identity-records/<ir>/re-identify/<token_ref>",
           methods=["GET"])
-@require_bearer("data_user")
+@require_bearer("data_user", "portal")
 def poll_reidentify(ir, token_ref, token_payload):
     result, error = db.poll_reidentify(ir, token_payload["duid"], token_ref)
     if error == "NOT_FOUND":

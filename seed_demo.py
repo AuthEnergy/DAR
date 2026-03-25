@@ -32,6 +32,9 @@ ACCOUNTS = [
     {"account-id": "dcc_system",        "secret-key": "dcc-secret-demo",
      "duid": "duid_dccsystem000000000000",   "display-name": "Smart DCC",
      "role": "dcc",                          "contact-url": "https://smartdcc.co.uk"},
+    {"account-id": "portal_ops",        "secret-key": "portal-secret-demo",
+     "duid": "duid_portalops000000000000",   "display-name": "Central Access Register Portal",
+     "role": "portal",                       "contact-url": "https://central.consent"},
 ]
 
 IDENTITY_RECORDS = [

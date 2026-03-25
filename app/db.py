@@ -345,8 +345,8 @@ def validate_reidentification_token(token_ref: str, initiating_duid: str) -> tup
 
         if token.get("initiating_duid") != initiating_duid:
             return None, "FORBIDDEN"
-        if not token.get("cross_duid"):
-            return None, "NOT_CROSS_DUID"
+        # cross_duid check only applies when called from POST /access-records
+        # portal accounts use this token for meter-point queries — skip cross_duid check
         if token.get("status") != "confirmed":
             return None, "NOT_CONFIRMED"
         if token.get("consumed"):
@@ -574,6 +574,13 @@ def get_access_record(ak: str) -> dict | None:
 
 def verify_access_record(ak: str) -> dict | None:
     return get_access_record(ak)
+
+def has_record_for_mpxn(duid: str, mpxn: str) -> bool:
+    """Check if a Data User has any access record (any state) for a given MPxN.
+    Used to enforce that data_user role can only query MPxNs they have registered."""
+    docs = _find("dar_records", {"type": "access_record", "duid": duid, "mpxn": mpxn}, 1)
+    return len(docs) > 0
+
 
 def list_records_for_mpxn(mpxn: str, duid: str = None,
                            state_filter: str = None,

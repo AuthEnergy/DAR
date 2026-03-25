@@ -136,17 +136,53 @@ def revoke_access(ak, token_payload):
 
 
 @bp.route("/v1/meter-points/<mpxn>/access-records", methods=["GET"])
-@require_bearer("data_user")
+@require_bearer("data_user", "portal")
 def list_access_records(mpxn, token_payload):
-    state = request.args.get("state")
-    basis = request.args.get("legal-basis")
+    state       = request.args.get("state")
+    basis       = request.args.get("legal-basis")
+    reid_token  = request.args.get("reidentification-token")
+    role        = token_payload.get("role")
 
     if state and state not in (VALID_STATES | {"DISCOVERED"}):
         return err(f"state must be one of {sorted(VALID_STATES)}", 400, "VAL002")
     if basis and basis not in VALID_BASES:
         return err("legal-basis invalid", 400, "VAL003")
 
-    docs = db.list_records_for_mpxn(mpxn, token_payload["duid"], state, basis)
+    if role == "portal":
+        # Portal accounts must supply a confirmed reidentification-token
+        if not reid_token:
+            return err(
+                "portal accounts must supply a confirmed reidentification-token "
+                "query parameter — obtain one via POST /identity-records/reidentify",
+                403, "AUTH004"
+            )
+        # Validate the token — we don't need the ir, just confirmation
+        _, error = db.validate_reidentification_token(reid_token, token_payload["duid"])
+        if error == "NOT_CONFIRMED":
+            return err("reidentification-token has not been confirmed by the customer yet", 422, "VAL002")
+        if error == "ALREADY_USED":
+            return err("reidentification-token has already been used", 409, "CON001")
+        if error == "EXPIRED":
+            return err("reidentification-token has expired (valid for 1 hour)", 422, "VAL002")
+        if error == "FORBIDDEN":
+            return err("reidentification-token was not initiated by this portal account", 403, "AUTH003")
+        if error and error != "NOT_CROSS_DUID":
+            return err(f"reidentification-token invalid: {error}", 400, "VAL001")
+        # Portal: return all records for this MPxN across all Data Users
+        docs = db.list_records_for_mpxn(mpxn)
+
+    else:
+        # data_user: scoped to MPxNs they have a registered record for
+        if not db.has_record_for_mpxn(token_payload["duid"], mpxn):
+            return err(
+                "Your account has no registered access records for this MPxN. "
+                "Data Users may only query meter points they have registered. "
+                "To allow customers to view all access records across all Data Users, "
+                "redirect them to the Central Customer Portal.",
+                403, "AUTH004"
+            )
+        docs = db.list_records_for_mpxn(mpxn)
+
     return ok({
         "response":       meta(f"/v1/meter-points/{mpxn}/access-records"),
         "mpxn":           mpxn,
