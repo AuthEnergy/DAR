@@ -35,6 +35,7 @@ Key properties:
 | **Customer** | Data Subject | The energy customer. Identified by MPxN. |
 | **Data Provider** | Data Source | Verifies access records before releasing meter data. |
 | **DCC** | — | Submits discovered access records and Change of Tenancy events. |
+| **Portal Operator** | — | Authorised third-party transparency portal (e.g. Citizens Advice). Queries any MPxN on behalf of a confirmed customer. |
 
 ---
 
@@ -94,13 +95,20 @@ pytest tests/ -v
 | `POST` | `/v1/identity-records/{ir}/re-identify` | Initiate re-identification (magic link, passkey assert, passkey register) |
 | `GET` | `/v1/identity-records/{ir}/re-identify/{tokenRef}` | Poll or confirm re-identification status |
 
+### Re-identification
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/v1/identity-records/exists?mpxn=` | Check existence and available re-identification methods (cross-DUID) |
+| `POST` | `/v1/identity-records/reidentify` | Initiate cross-DUID re-identification by MPxN — `ir` never exposed |
+| `GET` | `/v1/identity-records/reidentify/{tokenRef}` | Poll cross-DUID re-identification status by token-ref |
+
 ### Data Users
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/v1/access-records` | Register a new access record → 201 + Location |
 | `PUT` | `/v1/access-records/{ak}` | Full replacement of an ACTIVE record → 200 |
 | `DELETE` | `/v1/access-records/{ak}[?reason=]` | Revoke — transitions to REVOKED, retained for audit |
-| `GET` | `/v1/meter-points/{mpxn}/access-records` | List all records for a meter point (all Data Users) |
+| `GET` | `/v1/meter-points/{mpxn}/access-records` | List all records for a meter point — `data_user` scoped to own MPxNs, `portal` requires reidentification token |
 | `GET` | `/v1/records` | List own access records |
 
 ### Data Providers
@@ -160,6 +168,8 @@ All UIs are served by the API and require no separate deployment.
 | `/dashboard` | Data Users | Own records, webhooks, account settings |
 | `/portal` | Customers | View and withdraw access registrations |
 
+Third-party portal operators (e.g. Citizens Advice) can build their own branded transparency portal using the `portal` role and the re-identification endpoints. See [Portal Operators guide](docs.auth.energy/data-access-register/portal-operators).
+
 ---
 
 ## Legal Bases Supported
@@ -200,7 +210,7 @@ python setup_account.py \
   --contact-url https://bright-energy.com/contact
 ```
 
-Roles: `data_user` · `data_provider` · `dcc` · `admin`
+Roles: `data_user` · `data_provider` · `dcc` · `admin` · `portal`
 
 ---
 

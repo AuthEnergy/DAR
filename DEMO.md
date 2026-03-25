@@ -68,6 +68,7 @@ When it completes you'll see:
   northern_networks         data_user        northern-secret-demo
   greenswitch               data_user        greenswitch-secret-demo
   dcc_system                dcc              dcc-secret-demo
+  portal_ops                portal           portal-secret-demo
 
   Customer MPxN: 2312345678901
 ```
@@ -78,7 +79,9 @@ When it completes you'll see:
 
 ### Customer Portal — `http://localhost:5001/portal`
 
-The portal loads demo data automatically. You should see the full access register for meter point `2312345678901`:
+The portal authenticates as `portal_ops` (a `portal` role account) and automatically initiates a re-identification challenge before querying the meter point. In the demo, re-identification is stubbed — tokens auto-confirm immediately without sending real emails or passkey prompts.
+
+You should see the full access register for meter point `2312345678901`:
 
 - **Bright Energy Ltd** — ACTIVE, consent, `HH-CONSUMPTION / HH-EXPORT / TARIFF-IMPORT`, Withdraw button
 - **OctopusFlux Ltd** — ACTIVE, consent, `HH-CONSUMPTION`, Withdraw button
@@ -251,7 +254,44 @@ Valid `reason` values: `customer-request`, `contract-ended`, `lia-lapsed`, `stat
 
 ---
 
-## 5. Run the tests
+## 5. Try a Portal Operator Flow
+
+Portal accounts (role: `portal`) can query any MPxN on behalf of a confirmed customer. This is how Citizens Advice or any other authorised transparency service would work.
+
+```bash
+# Get a portal token
+PORTAL_TOKEN=$(curl -s -u portal_ops:portal-secret-demo \
+  http://localhost:5001/v1/auth/token | python3 -c "import sys,json; print(json.load(sys.stdin)['bearer-token'])")
+
+# Check if an identity record exists for the MPxN
+curl -s -H "Authorization: Bearer $PORTAL_TOKEN" \
+  "http://localhost:5001/v1/identity-records/exists?mpxn=2312345678901" \
+  | python3 -m json.tool
+
+# Initiate re-identification (stubbed — auto-confirms)
+TOKEN_REF=$(curl -s -X POST \
+  -H "Authorization: Bearer $PORTAL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"mpxn": "2312345678901", "method": "magic-link"}' \
+  http://localhost:5001/v1/identity-records/reidentify \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['magic-link']['token-ref'])")
+
+# Poll for confirmation (auto-confirms on first poll in demo)
+curl -s -H "Authorization: Bearer $PORTAL_TOKEN" \
+  "http://localhost:5001/v1/identity-records/reidentify/$TOKEN_REF" \
+  | python3 -m json.tool
+
+# Query the meter point using the confirmed token
+curl -s -H "Authorization: Bearer $PORTAL_TOKEN" \
+  "http://localhost:5001/v1/meter-points/2312345678901/access-records?reidentification-token=$TOKEN_REF" \
+  | python3 -m json.tool
+```
+
+Note: a `data_user` account attempting to query an MPxN they have no record for will receive a 403. This scoping prevents Data Users from bulk-querying arbitrary meter points.
+
+---
+
+## 6. Run the tests
 
 ```bash
 pip install -r requirements.txt
@@ -262,7 +302,7 @@ All tests run with mocked CouchDB — no running stack required.
 
 ---
 
-## 6. Inspect the database
+## 7. Inspect the database
 
 CouchDB's built-in admin UI is at:
 
@@ -283,7 +323,7 @@ Username: `admin` · Password: `devpassword`
 
 ---
 
-## 7. Reset and start over
+## 8. Reset and start over
 
 ```bash
 docker compose -f docker/docker-compose.yml down -v
