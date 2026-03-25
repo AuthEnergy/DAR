@@ -44,6 +44,8 @@ AccessRecord
 
 A single Identity Record can be referenced by multiple Access Records — for example if the same customer has given consent to multiple Controllers managed by the same Data User, or if a consent is renewed and a new Access Record is created.
 
+An Identity Record created by one Data User can also be referenced by another Data User, provided the customer has completed a cross-DUID re-identification challenge. See [Cross-DUID Re-identification](#cross-duid-re-identification) below.
+
 ## Creating an Identity Record
 
 Call `POST /identity-records` before registering an Access Record. Supply the `ir` key in `record-metadata.identity-record-ref` when calling `POST /access-records`.
@@ -174,6 +176,99 @@ sequenceDiagram
     CR->>DU: status: confirmed
 ```
 
+## Cross-DUID Re-identification
+
+A customer who has already been identified by one Data User (Data User A) can authorise a second Data User (Data User B) to link a new Access Record to the same Identity Record — without Data User B ever seeing the `ir` key or any PII.
+
+This avoids collecting the customer's details twice and is appropriate when a customer is onboarding with a new supplier, adding a third-party service, or switching between registered organisations.
+
+**The `ir` key never leaves the register in this flow.** Data User B works only with an MPxN and a confirmation token. The register resolves the `ir` internally.
+
+### Security Model
+
+The cross-DUID flow requires the customer to actively complete a re-identification challenge initiated by Data User B. This ensures:
+
+- A rogue Data User cannot look up an `ir` by MPxN and reuse it — they can only initiate a challenge, not complete one
+- The challenge page on `id.central.consent` displays Data User B's name, so the customer knows exactly who is requesting access and can refuse
+- The confirmation token is single-use, scoped to the initiating DUID, and expires after one hour
+- Without customer completion, the token cannot be used
+
+### Step 1: Check Existence
+
+Data User B checks whether an Identity Record exists for the customer's MPxN:
+
+```
+GET /identity-records/exists?mpxn=1234567890123
+```
+
+Returns `{ "exists": true }` or `{ "exists": false }`. No `ir` key or PII is returned.
+
+If `exists: false`, Data User B should create a new Identity Record via the standard flow.
+
+### Step 2: Initiate Re-identification
+
+Data User B initiates the re-identification challenge using only the MPxN. The register resolves the `ir` internally and dispatches the challenge to the customer:
+
+```
+POST /identity-records/reidentify
+{
+  "mpxn": "1234567890123",
+  "method": "magic-link"
+}
+```
+
+The challenge page or email displays Data User B's `display-name` from their registered account profile, so the customer sees who is asking.
+
+```mermaid
+sequenceDiagram
+    participant Customer
+    participant DU_B as Data User B
+    participant CR as Central Register
+
+    DU_B->>CR: GET /identity-records/exists?mpxn=...
+    CR->>DU_B: exists: true
+    DU_B->>CR: POST /identity-records/reidentify (mpxn, method: magic-link)
+    CR->>CR: Resolve ir internally
+    CR->>Customer: Email — "Data User B is requesting access to your energy data"
+    CR->>DU_B: token-ref
+    Customer->>CR: Click link (confirms identity)
+    DU_B->>CR: GET /identity-records/{ir}/re-identify/{token-ref}
+    CR->>DU_B: status: confirmed
+```
+
+The same flow applies for passkey methods — the challenge page on `id.central.consent` shows Data User B's name before the customer is prompted for biometric confirmation.
+
+### Step 3: Create the Access Record
+
+Data User B passes the confirmed `token-ref` as `reidentification-token` in the standard `POST /access-records` request, omitting `identity-record-ref` (the register injects it from the token):
+
+```json
+{
+  "reidentification-token": "mlr_9f8e7d6c5b4a9f8e7d6c5b4a",
+  "record-metadata": {
+    "schema-version": "1.0",
+    "controller-arrangement": { ... }
+  },
+  "notice": { ... },
+  "processing": { ... },
+  "access-event": { ... }
+}
+```
+
+The register validates the token is confirmed, was initiated by Data User B, has not been used before, and was issued within the last hour — then links the new Access Record to the existing Identity Record.
+
+```mermaid
+sequenceDiagram
+    participant DU_B as Data User B
+    participant CR as Central Register
+
+    DU_B->>CR: POST /access-records (reidentification-token: mlr_...)
+    CR->>CR: Validate token — confirmed, not consumed, initiated by DU_B, within 1 hour
+    CR->>CR: Resolve ir from token, mark token consumed
+    CR->>CR: Create Access Record linked to existing ir
+    CR->>DU_B: ak
+```
+
 ## Managing Credentials
 
 ### Adding a Passkey at Identity Record Creation
@@ -205,6 +300,7 @@ By hosting the ceremony on `id.central.consent`, the register owns the RP entire
 - Passkeys work consistently across all Data Users and on the Customer Portal
 - A customer registered a passkey through one Data User's flow can use it to authenticate on the portal directly
 - The Data User never handles raw WebAuthn credential material — they only deal with redirect URLs and confirmation tokens
+- In cross-DUID flows, the ceremony page can display the initiating Data User's name, giving the customer full context before committing
 
 ## GDPR Erasure
 
@@ -229,4 +325,4 @@ After anonymisation:
 
 **`submitted` in `principal-verification` must always be redacted.** The register must never hold a full card number, account number, or other unredacted sensitive credential. Use masked values such as `XXXX-XXXX-XXXX-4242`.
 
-**Identity Records are scoped to the creating Data User.** A Data User cannot look up or modify Identity Records created by another Data User, even for the same MPxN.
+**Identity Records are scoped to the creating Data User** for direct access. A Data User cannot look up, read, or modify another Data User's Identity Record directly. Cross-DUID linking is only possible via a confirmed customer re-identification challenge — the `ir` is never exposed to the second Data User.
