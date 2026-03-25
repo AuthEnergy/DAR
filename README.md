@@ -83,18 +83,31 @@ pytest tests/ -v
 |---|---|---|
 | `GET` | `/v1/auth/token` | Exchange Basic Auth for JWT bearer token (7200s) |
 
+### Identity Records
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/v1/identity-records` | Create an Identity Record — MPxN, address, verification evidence, optional email |
+| `GET` | `/v1/identity-records?mpxn=&email=` | Look up records for a returning customer |
+| `GET` | `/v1/identity-records/{ir}` | Retrieve a specific Identity Record |
+| `DELETE` | `/v1/identity-records/{ir}` | Anonymise — GDPR Art. 17 erasure, retains `ir` key for audit |
+| `DELETE` | `/v1/identity-records/{ir}/credentials/{credentialId}` | Remove a passkey credential |
+| `POST` | `/v1/identity-records/{ir}/re-identify` | Initiate re-identification (magic link, passkey assert, passkey register) |
+| `GET` | `/v1/identity-records/{ir}/re-identify/{tokenRef}` | Poll or confirm re-identification status |
+
 ### Data Users
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/v1/access-records` | Register a new access record → 201 + Location |
 | `PUT` | `/v1/access-records/{ak}` | Full replacement of an ACTIVE record → 200 |
 | `DELETE` | `/v1/access-records/{ak}[?reason=]` | Revoke — transitions to REVOKED, retained for audit |
-| `GET` | `/v1/meter-points/{mpxn}/access-records` | List records for a meter point |
+| `GET` | `/v1/meter-points/{mpxn}/access-records` | List all records for a meter point (all Data Users) |
+| `GET` | `/v1/records` | List own access records |
 
 ### Data Providers
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/v1/access-records/{ak}` | Verify access record — **unauthenticated** |
+| `GET` | `/v1/access-records/{ak}` | Verify access record — **unauthenticated**, returns no PII |
+| `GET` | `/v1/data-users/{duid}` | Look up a Data User's status and profile |
 
 ### Self-Service
 | Method | Path | Description |
