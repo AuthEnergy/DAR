@@ -20,12 +20,13 @@ The register is not a consent register exclusively. It records access under any 
 - supports any legal basis (Public Task / Legitimate Interest, Consent, etc)
 - automatic capture of discovered access (via DCC transaction logs)
 - notifies Data Users of Change of Tenancy events (from DCC via webhook)
-- supports a Central Customer Portal as well as allowing consent to be displayed in any customer-facing service
-- fully SEC compliant
-- supports separate or combined Controllers/Users
-- centrally stores identity evidence (faster, more detailed SEC audits — no random sample required)
-- new controller/user terms can be automatically discovered and assessed in real time
-- historic and expired access can be added to the system at any time
+- supports a display of access records in [Central Customer Portal](/data-access-register/customer-portal) and/or any customer-facing user service (although this would allow users to see who else the customer has consented to)
+- fully SEC compliant & compatible (no regulatory change required)
+    - centrally stores identity evidence (faster, more detailed SEC audits — no random sample required)
+    - new controller/user terms can be automatically discovered and assessed in real time
+- supports separate or combined controllers/users + sole/joint/share controllers
+- could be enhanced to promote other services to customers
+- historic and expired access can be added to the system at any time (to complete historic view of consent)
 - re-identifies returning customers via passkey or magic link — no re-collection of details required
 </Info>
 
@@ -126,7 +127,7 @@ sequenceDiagram
     CR->>DU: ak
 ```
 
-See the [Identity Records guide](/dar/identity-records) for full details including passkey enrolment and credential management.
+See the [Identity Records guide](/data-access-register/identity-records) for full details including passkey enrolment and credential management.
 
 ## Verifying an Access Record
 
