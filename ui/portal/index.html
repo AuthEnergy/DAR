@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Energy Data — Central Access Register</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:               #f4f6f9;
+  --surface:          #ffffff;
+  --border:           #e2e6ed;
+  --text:             #0f1923;
+  --text-secondary:   #5a6778;
+  --text-muted:       #8a97a8;
+  --accent:           #0057ff;
+  --accent-light:     #e8eeff;
+  --green:            #00875a;
+  --green-light:      #e3f5ef;
+  --red:              #c0392b;
+  --red-light:        #fdecea;
+  --grey-light:       #f0f2f5;
+  --discovered:       #6b21a8;
+  --discovered-light: #f3e8ff;
+  --discovered-border:#d8b4fe;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.site-header {
+  background: var(--text);
+  padding: 0 32px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #fff;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: .9;
+}
+.logo span { color: #4d9fff; }
+.header-meta { font-size: 12px; color: rgba(255,255,255,.45); font-family: var(--mono); }
+
+/* ── Property banner ── */
+.property-banner {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 32px 18px;
+}
+.banner-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.property-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 48px;
+  flex-wrap: wrap;
+}
+.property-address {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+.property-address .line2 {
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+.mpan-col { display: flex; flex-direction: column; gap: 2px; }
+.mpan-label { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+.mpan-value { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: .05em; }
+.summary-pills { display: flex; gap: 8px; align-items: center; margin-left: auto; flex-wrap: wrap; }
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+}
+.pill-active    { background: var(--green-light);      color: var(--green); }
+.pill-discovered{ background: var(--discovered-light); color: var(--discovered); }
+.pill-expired   { background: var(--grey-light);       color: var(--text-muted); }
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ── Main ── */
+.main { padding: 24px 32px 60px; max-width: 1100px; }
+
+.section-heading {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Discovered banner ── */
+.discovered-banner {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--discovered-light);
+  border: 1px solid var(--discovered-border);
+  border-left: 4px solid var(--discovered);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #3b0764;
+  line-height: 1.6;
+}
+.discovered-banner strong { color: var(--discovered); }
+.org-highlight {
+  display: inline-block;
+  background: white;
+  border: 1px solid var(--discovered-border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--discovered);
+  margin: 0 2px;
+}
+.sec-link { color: var(--discovered); font-weight: 600; text-decoration: underline; cursor: pointer; }
+
+/* ── Table ── */
+.records-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+.records-table thead tr { background: #f8f9fb; }
+.records-table th {
+  padding: 11px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.records-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.records-table tr:last-child td { border-bottom: none; }
+
+.org-name { font-weight: 600; font-size: 14px; color: var(--text); }
+.org-sub  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.sec-party { font-family: var(--mono); font-size: 11px; color: var(--discovered); margin-top: 3px; font-weight: 600; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  white-space: nowrap;
+}
+.badge-active     { background: var(--green-light);      color: var(--green); }
+.badge-discovered { background: var(--discovered-light); color: var(--discovered); }
+.badge-expired    { background: var(--grey-light);       color: var(--text-muted); }
+.badge-revoked    { background: var(--red-light);        color: var(--red); }
+
+.legal-basis    { font-size: 13px; color: var(--text); }
+.legal-unknown  { font-size: 13px; color: var(--text-muted); font-style: italic; }
+
+.data-types { display: flex; flex-direction: column; gap: 4px; }
+.dtype {
+  display: inline-block;
+  background: #f0f2f5;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  width: fit-content;
+}
+.dtype-discovered {
+  background: var(--discovered-light);
+  border: 1px solid var(--discovered-border);
+  color: var(--discovered);
+}
+
+.terms-link { color: var(--accent); font-size: 12px; font-weight: 500; text-decoration: none; }
+.terms-link:hover { text-decoration: underline; }
+.terms-na { font-size: 12px; color: var(--text-muted); }
+
+.date-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.date-cell  { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+
+.btn-withdraw {
+  background: var(--red-light); color: var(--red);
+  border: 1px solid #f5c2be; border-radius: 6px;
+  padding: 6px 12px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: background .15s;
+}
+.btn-withdraw:hover { background: #fbd5d2; }
+.btn-contact {
+  color: var(--accent); font-size: 12px; font-weight: 600; text-decoration: none;
+}
+.btn-contact:hover { text-decoration: underline; }
+.btn-sec {
+  display: inline-block;
+  background: var(--discovered-light);
+  border: 1px solid var(--discovered-border);
+  color: var(--discovered);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px; font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn-sec:hover { background: #ede0ff; }
+.no-action { font-size: 12px; color: var(--text-muted); }
+
+.discovered-row td { background: #fdf8ff; }
+.expired-row    td { opacity: .7; }
+
+/* ── Revoke modal ── */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 50; animation: fadeIn .15s ease;
+}
+.modal {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.15);
+  width: 440px; max-width: 95vw;
+  animation: slideUp .15s ease;
+}
+.modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-size: 16px; font-weight: 700; }
+.modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); line-height: 1; }
+.modal-body  { padding: 20px 24px; }
+.modal-footer{ padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+.withdraw-warning {
+  padding: 12px 14px;
+  background: var(--red-light);
+  border: 1px solid #f5c2be;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #7b1a14;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+.withdraw-org { font-weight: 700; }
+.modal-body label { font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px; }
+.modal-body select {
+  width: 100%; padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  font-size: 13px; font-family: var(--sans);
+  background: var(--bg); color: var(--text);
+  cursor: pointer; outline: none;
+}
+.modal-body select:focus { border-color: var(--accent); }
+.btn-cancel {
+  background: var(--grey-light); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-confirm-withdraw {
+  background: var(--red); color: white;
+  border: none; border-radius: 8px;
+  padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-confirm-withdraw:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Loading ── */
+.loading-state {
+  display: flex; align-items: center; justify-content: center;
+  padding: 80px; color: var(--text-muted); gap: 12px; font-size: 14px;
+}
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+
+/* ── Toast ── */
+.toast-wrap { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 200; }
+.toast {
+  background: var(--text); color: white;
+  padding: 10px 16px; border-radius: 8px;
+  font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  animation: slideUp .2s ease;
+}
+.toast.success { background: var(--green); }
+.toast.error   { background: var(--red); }
+
+/* ── Footer ── */
+.portal-footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.portal-footer a { color: var(--accent); text-decoration: none; }
+.portal-footer a:hover { text-decoration: underline; }
+
+/* ── Config panel ── */
+.config-bar {
+  background: #1e293b;
+  padding: 8px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: rgba(255,255,255,.5);
+}
+.config-bar label { color: rgba(255,255,255,.4); }
+.config-bar input, .config-bar select {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.8);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  outline: none;
+}
+.config-bar input { width: 220px; }
+.config-bar button {
+  background: var(--accent);
+  border: none;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--mono);
+  cursor: pointer;
+  font-weight: 600;
+}
+.config-bar button:hover { background: #0047dd; }
+.config-divider { width: 1px; height: 16px; background: rgba(255,255,255,.15); }
+
+@keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes spin    { to { transform: rotate(360deg) } }
+</style>
+</head>
+<body>
+
+<!-- Dev config bar -->
+<div class="config-bar" id="config-bar">
+  <label>API</label>
+  <input type="text" id="cfg-api" value="http://localhost:5001">
+  <div class="config-divider"></div>
+  <label>account_id</label>
+  <input type="text" id="cfg-account" value="bright_energy" style="width:140px">
+  <label>secret</label>
+  <input type="password" id="cfg-secret" value="bright-secret-demo" style="width:160px">
+  <div class="config-divider"></div>
+  <label>MPxN</label>
+  <input type="text" id="cfg-mpxn" value="2312345678901" style="width:130px">
+  <div class="config-divider"></div>
+  <button id="cfg-load-btn">Load records</button>
+  <span id="cfg-status" style="color:rgba(255,255,255,.4)"></span>
+</div>
+
+<header class="site-header">
+  <div class="logo">Central.<span>access</span>.register</div>
+  <div class="header-meta" id="header-tid"></div>
+</header>
+
+<div class="property-banner">
+  <div class="banner-label">Your energy data access — meter point</div>
+  <div class="property-row">
+    <div>
+      <div class="property-address" id="prop-address">14 Acacia Avenue<div class="line2">Manchester, M14 5RT</div></div>
+    </div>
+    <div class="mpan-col">
+      <div class="mpan-label">MPxN</div>
+      <div class="mpan-value" id="prop-mpxn">—</div>
+    </div>
+    <div class="summary-pills" id="summary-pills">
+      <span class="pill pill-active"><span class="dot"></span><span id="pill-active">—</span> active</span>
+      <span class="pill pill-discovered"><span class="dot"></span><span id="pill-discovered">—</span> detected</span>
+      <span class="pill pill-expired"><span id="pill-expired">—</span> expired</span>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div id="discovered-banner-wrap"></div>
+
+  <div class="section-heading">Organisations with registered access to your data</div>
+
+  <div id="table-wrap">
+    <div class="loading-state"><div class="spinner"></div> Loading records…</div>
+  </div>
+
+  <div class="portal-footer">
+    <div>Central Data Access Register &nbsp;·&nbsp; <a href="#">Download full history</a> &nbsp;·&nbsp; <a href="#">Contact Smart Energy Code</a></div>
+    <div>Secured by <strong>central.consent</strong></div>
+  </div>
+</div>
+
+<!-- Revoke modal -->
+<div id="modal-revoke" style="display:none">
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Withdraw data access</div>
+        <button class="modal-close" id="modal-close-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="withdraw-warning">
+          You are about to withdraw access for <span class="withdraw-org" id="modal-org-name">—</span>.
+          They will no longer be able to request your meter data. This cannot be undone.
+        </div>
+        <label>Reason for withdrawing access</label>
+        <select id="modal-reason">
+          <option value="">Select a reason…</option>
+          <option value="customer-request">I no longer want to share my data</option>
+          <option value="contract-ended">I've switched supplier or ended the service</option>
+          <option value="data-no-longer-required">The data is no longer needed</option>
+          <option value="other">Other reason</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="modal-cancel-btn">Cancel</button>
+        <button class="btn-confirm-withdraw" id="modal-confirm-btn">Withdraw access</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+const API_BASE = () => document.getElementById('cfg-api').value.trim().replace(/\/$/, '');
+const MPXN     = () => document.getElementById('cfg-mpxn').value.trim();
+
+let currentToken  = null;
+let currentAK     = null;
+let currentOrgName = null;
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function getToken() {
+  const id = document.getElementById('cfg-account').value.trim();
+  const sk = document.getElementById('cfg-secret').value.trim();
+  const r  = await fetch(`${API_BASE()}/v1/auth/token`, {
+    headers: { 'Authorization': 'Basic ' + btoa(`${id}:${sk}`) }
+  });
+  if (!r.ok) throw new Error(`Auth failed: ${r.status}`);
+  const d = await r.json();
+  return d['bearer-token'];
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+document.getElementById('cfg-load-btn').addEventListener('click', loadPortal);
+
+async function loadPortal() {
+  const status = document.getElementById('cfg-status');
+  status.textContent = 'loading…';
+  document.getElementById('table-wrap').innerHTML =
+    '<div class="loading-state"><div class="spinner"></div> Loading records…</div>';
+  document.getElementById('discovered-banner-wrap').innerHTML = '';
+
+  try {
+    currentToken = await getToken();
+    const mpxn   = MPXN();
+
+    const r = await fetch(
+      `${API_BASE()}/v1/meter-points/${mpxn}/access-records`,
+      { headers: { 'Authorization': `Bearer ${currentToken}` } }
+    );
+    if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+    const data = await r.json();
+
+    document.getElementById('prop-mpxn').textContent = mpxn;
+    document.getElementById('header-tid').textContent =
+      'txn: ' + (data.response?.['transaction-id'] || '—');
+
+    renderPortal(data['access-records'] || [], mpxn);
+    status.textContent = `✓ ${data['access-records'].length} records`;
+  } catch(e) {
+    status.textContent = `✗ ${e.message}`;
+    document.getElementById('table-wrap').innerHTML =
+      `<div class="loading-state" style="color:#c0392b">Failed to load: ${e.message}</div>`;
+    toast(e.message, 'error');
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderPortal(records, mpxn) {
+  const active     = records.filter(r => r.state === 'ACTIVE').length;
+  const discovered = records.filter(r => r.state === 'DISCOVERED').length;
+  const expired    = records.filter(r => r.state === 'EXPIRED' || r.state === 'REVOKED').length;
+
+  document.getElementById('pill-active').textContent     = active;
+  document.getElementById('pill-discovered').textContent = discovered;
+  document.getElementById('pill-expired').textContent    = expired;
+
+  // Discovered banner
+  const discRecs = records.filter(r => r.state === 'DISCOVERED');
+  if (discRecs.length) {
+    const orgs = discRecs.map(r =>
+      `<span class="org-highlight">${r['discovered-access']?.['organisation-name'] || '—'}</span>`
+    ).join(' and ');
+    document.getElementById('discovered-banner-wrap').innerHTML = `
+      <div class="discovered-banner">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div><strong>Unregistered access detected.</strong> The Smart DCC has identified that
+        ${orgs} has accessed meter data at this property but has not registered with the Central Access Register.
+        If you have concerns, you can <a class="sec-link" href="#">contact the Smart Energy Code Administrator ↗</a>.</div>
+      </div>`;
+  }
+
+  // Sort: ACTIVE consent first, then ACTIVE other, then DISCOVERED, then EXPIRED/REVOKED
+  const sorted = [
+    ...records.filter(r => r.state === 'ACTIVE' && r['legal-basis']?.includes('consent')),
+    ...records.filter(r => r.state === 'ACTIVE' && !r['legal-basis']?.includes('consent')),
+    ...records.filter(r => r.state === 'DISCOVERED'),
+    ...records.filter(r => r.state === 'EXPIRED'),
+    ...records.filter(r => r.state === 'REVOKED'),
+  ];
+
+  const rows = sorted.map(rec => buildRow(rec)).join('');
+
+  document.getElementById('table-wrap').innerHTML = `
+    <table class="records-table">
+      <thead><tr>
+        <th style="width:20%">Organisation</th>
+        <th style="width:10%">Status</th>
+        <th style="width:14%">Legal basis</th>
+        <th style="width:18%">Data accessed</th>
+        <th style="width:8%">Terms</th>
+        <th style="width:14%">Registered / Seen</th>
+        <th style="width:16%">Action</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  // Wire up withdraw buttons
+  document.querySelectorAll('[data-ak]').forEach(btn => {
+    btn.addEventListener('click', () => openRevokeModal(btn.dataset.ak, btn.dataset.org));
+  });
+}
+
+function buildRow(rec) {
+  // If the API returns ACTIVE but expiry has passed, treat as EXPIRED client-side
+  const isExpiredByDate = rec.expiry && new Date(rec.expiry) < new Date();
+  const state    = (rec.state === 'ACTIVE' && isExpiredByDate) ? 'EXPIRED' : rec.state;
+  const isDisc   = state === 'DISCOVERED';
+  const isExpired= state === 'EXPIRED' || state === 'REVOKED';
+  const disc     = rec['discovered-access'] || {};
+
+  const orgName  = isDisc
+    ? (disc['organisation-name'] || '—')
+    : (rec['lead-controller-name'] || rec['record-metadata']?.['controller-arrangement']?.controllers?.[0]?.name || '—');
+
+  const orgSub   = isDisc
+    ? 'Detected — not yet registered'
+    : arrangementLabel(rec);
+
+  const badge    = buildBadge(state);
+  const legalTxt = isDisc
+    ? `<div class="legal-unknown">Not registered — unknown</div>`
+    : `<div class="legal-basis">${humanLegalBasis(rec['legal-basis'])}</div>`;
+
+  const dtypes   = isDisc
+    ? (disc['data-types-observed'] || []).map(t => `<span class="dtype dtype-discovered">${t}</span>`).join('')
+    : (rec['data-types'] || []).map(t => `<span class="dtype">${t}</span>`).join('');
+
+  const lead    = rec['record-metadata']?.['controller-arrangement']?.controllers?.find(
+    c => c.role === 'sole' || c.role === 'lead'
+  );
+  const termsUrl = lead?.['privacy-rights-url'] || lead?.['contact-url'];
+  const termsCell= isDisc
+    ? `<span class="terms-na">Not available</span>`
+    : (termsUrl
+        ? `<a class="terms-link" href="${termsUrl}" target="_blank">Privacy policy ↗</a>`
+        : `<span class="terms-na">—</span>`);
+
+  let dateCell;
+  if (isDisc) {
+    dateCell = `
+      <div class="date-label">First detected</div>
+      <div class="date-cell">${fmtDate(disc['first-seen'])}</div>
+      <div class="date-label" style="margin-top:5px">Last detected</div>
+      <div class="date-cell">${fmtDate(disc['last-seen'])}</div>`;
+  } else {
+    // AccessRecordSummary includes record-metadata.created-at and expiry at top level
+    const since  = fmtDate(rec['record-metadata']?.['created-at']);
+    const expiry = rec.expiry;
+    const expiryLabel = isExpired ? (state === 'REVOKED' ? 'Revoked' : 'Expired') : (expiry ? 'Expires' : 'No expiry');
+    dateCell = `
+      <div class="date-label">Registered</div>
+      <div class="date-cell">${since || '—'}</div>
+      <div class="date-label" style="margin-top:5px">${expiryLabel}</div>
+      <div class="date-cell">${expiry ? fmtDate(expiry) : '—'}</div>`;
+  }
+
+  let actionCell;
+  if (isDisc) {
+    actionCell = `<a class="btn-sec" href="#">Contact SEC ↗</a>`;
+  } else if (state === 'ACTIVE' && rec['legal-basis']?.includes('consent')) {
+    actionCell = `<button class="btn-withdraw" data-ak="${rec.ak}" data-org="${orgName}">✕ Withdraw</button>`;
+  } else if (state === 'ACTIVE') {
+    actionCell = `<a class="btn-contact" href="#">Contact ↗</a>`;
+  } else {
+    actionCell = `<span class="no-action">${state === 'REVOKED' ? 'Withdrawn' : 'Expired'}</span>`;
+  }
+
+  const rowClass = isDisc ? 'discovered-row' : isExpired ? 'expired-row' : '';
+
+  return `
+    <tr class="${rowClass}">
+      <td>
+        <div class="org-name" style="${isDisc ? 'color:var(--discovered)' : ''}">${orgName}</div>
+        <div class="org-sub">${orgSub}</div>
+        ${isDisc && disc['organisation-reference'] ? `<div class="sec-party">${disc['organisation-reference']}</div>` : ''}
+      </td>
+      <td>${badge}</td>
+      <td>${legalTxt}</td>
+      <td><div class="data-types">${dtypes || '<span class="dtype">—</span>'}</div></td>
+      <td>${termsCell}</td>
+      <td>${dateCell}</td>
+      <td class="action-cell">${actionCell}</td>
+    </tr>`;
+}
+
+function buildBadge(state) {
+  const map = {
+    ACTIVE:     `<span class="badge badge-active">● ACTIVE</span>`,
+    DISCOVERED: `<span class="badge badge-discovered">◈ DETECTED</span>`,
+    EXPIRED:    `<span class="badge badge-expired">EXPIRED</span>`,
+    REVOKED:    `<span class="badge badge-revoked">WITHDRAWN</span>`,
+  };
+  return map[state] || `<span class="badge">${state}</span>`;
+}
+
+function arrangementLabel(rec) {
+  const arr  = rec['arrangement-type'];
+  const count = rec['controller-count'] || 0;
+  if (arr === 'joint')  return `Joint Controllers (${count})`;
+  if (arr === 'group')  return `${count > 1 ? count + ' brands' : 'Group'}`;
+  return 'Data User &amp; Controller';
+}
+
+function humanLegalBasis(basis) {
+  const map = {
+    'uk-consent':              'You gave permission',
+    'uk-explicit-consent':     'You gave permission (explicit)',
+    'uk-public-task':          'Public or regulatory duty',
+    'uk-legitimate-interests': 'Legitimate business interest',
+    'uk-legal-obligation':     'Legal obligation',
+    'uk-contract':             'Part of a contract',
+  };
+  return map[basis] || basis || '—';
+}
+
+// ── Revoke modal ──────────────────────────────────────────────────────────────
+function openRevokeModal(ak, orgName) {
+  currentAK      = ak;
+  currentOrgName = orgName;
+  document.getElementById('modal-org-name').textContent = orgName;
+  document.getElementById('modal-reason').value = '';
+  document.getElementById('modal-revoke').style.display = 'block';
+}
+
+document.getElementById('modal-close-btn').addEventListener('click',  () => { document.getElementById('modal-revoke').style.display = 'none'; });
+document.getElementById('modal-cancel-btn').addEventListener('click', () => { document.getElementById('modal-revoke').style.display = 'none'; });
+document.getElementById('modal-backdrop').addEventListener('click', e => {
+  if (e.target === e.currentTarget) document.getElementById('modal-revoke').style.display = 'none';
+});
+
+document.getElementById('modal-confirm-btn').addEventListener('click', async () => {
+  const reason = document.getElementById('modal-reason').value;
+  if (!reason) { toast('Please select a reason', 'error'); return; }
+
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.disabled = true; btn.textContent = 'Withdrawing…';
+
+  try {
+    const r = await fetch(`${API_BASE()}/v1/access-records/${currentAK}?reason=${encodeURIComponent(reason)}`, {
+      method:  'DELETE',
+      headers: { 'Authorization': `Bearer ${currentToken}` },
+    });
+    if (!r.ok) throw new Error(`${r.status}`);
+    document.getElementById('modal-revoke').style.display = 'none';
+    toast(`Access withdrawn for ${currentOrgName}`, 'success');
+    await loadPortal();
+  } catch(e) {
+    toast(`Failed to withdraw: ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Withdraw access';
+  }
+});
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function fmtDate(s) {
+  if (!s) return '—';
+  try {
+    return new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch { return s; }
+}
+
+function toast(msg, type = '') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-wrap').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// Auto-load on page open
+window.addEventListener('DOMContentLoaded', loadPortal);
+</script>
+</body>
+</html>

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DAR Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ui/lib/dar-styles.css">
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-mark" style="background:#059669">
+        <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <div><div class="login-title">DAR Admin</div><div class="login-sub">Data Access Register</div></div>
+    </div>
+    <label>Account ID</label>
+    <input type="text" id="login-account" placeholder="admin_account" autocomplete="username">
+    <label>Secret Key</label>
+    <input type="password" id="login-secret" placeholder="••••••••" autocomplete="current-password">
+    <div id="login-error" style="display:none;color:var(--red);font-size:12px;margin-bottom:12px"></div>
+    <button class="btn btn-primary btn-full" id="login-btn">Sign in</button>
+  </div>
+</div>
+
+<div class="shell" id="app" style="display:none">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-row">
+        <div class="logo-icon" style="background:#059669">
+          <svg width="14" height="14" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <div><div class="logo-name">DAR Admin</div><span class="logo-env" id="api-host">localhost:5001</span></div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active" data-page="dashboard"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</div>
+      <div class="nav-label">Management</div>
+      <div class="nav-item" data-page="accounts"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Accounts<span class="nav-badge" id="nb-accounts">—</span></div>
+      <div class="nav-item" data-page="records"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>Access Records<span class="nav-badge" id="nb-records">—</span></div>
+      <div class="nav-item" data-page="webhooks"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Webhooks<span class="nav-badge" id="nb-webhooks">—</span></div>
+      <div class="nav-label">System</div>
+      <div class="nav-item" data-page="audit"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Audit Log</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user"><div class="sidebar-user-name" id="sidebar-uname">—</div><div>admin</div></div>
+      <button class="btn-logout" id="logout-btn" title="Sign out"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="page-title">Dashboard</div>
+      <div class="topbar-right" id="topbar-right"></div>
+    </div>
+    <div class="content">
+
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Accounts</div><div class="stat-value" id="s-accounts">—</div><div class="stat-sub" id="s-accounts-sub">—</div></div>
+          <div class="stat-card stat-green"><div class="stat-label">Active Records</div><div class="stat-value" id="s-active">—</div><div class="stat-sub" id="s-records-sub">—</div></div>
+          <div class="stat-card stat-amber"><div class="stat-label">Revoked</div><div class="stat-value" id="s-revoked">—</div><div class="stat-sub">access records</div></div>
+          <div class="stat-card stat-blue"><div class="stat-label">Webhooks</div><div class="stat-value" id="s-webhooks">—</div><div class="stat-sub" id="s-webhooks-sub">—</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Recent Activity</div><button class="btn btn-secondary btn-sm" id="view-audit-btn">View all →</button></div>
+          <div id="dash-audit"></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-accounts">
+        <div class="card">
+          <div class="filter-bar">
+            <div class="search-wrap"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" id="acct-search" placeholder="Search account ID or name…"></div>
+            <select class="filter-select" id="acct-role"><option value="">All roles</option><option>data_user</option><option>data_provider</option><option>dcc</option><option>admin</option></select>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Account ID</th><th>Display Name</th><th>Role</th><th>DUID</th><th>Status</th><th>Registered</th><th></th></tr></thead><tbody id="acct-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-records">
+        <div class="card">
+          <div class="filter-bar">
+            <div class="search-wrap" style="max-width:300px"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" id="rec-search" placeholder="MPxN or ak_…"></div>
+            <select class="filter-select" id="rec-state"><option value="">All states</option><option>ACTIVE</option><option>REVOKED</option><option>EXPIRED</option></select>
+            <select class="filter-select" id="rec-basis"><option value="">All legal bases</option><option value="uk-consent">uk-consent</option><option value="uk-explicit-consent">uk-explicit-consent</option><option value="uk-legitimate-interests">uk-legitimate-interests</option><option value="uk-public-task">uk-public-task</option><option value="uk-legal-obligation">uk-legal-obligation</option><option value="uk-contract">uk-contract</option></select>
+            <button class="btn btn-secondary btn-sm" id="rec-search-btn">Search</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Access Key</th><th>Controller</th><th>MPxN</th><th>Legal Basis</th><th>State</th><th>Expiry</th><th></th></tr></thead><tbody id="rec-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-webhooks">
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>WID</th><th>DUID</th><th>URL</th><th>Events</th><th>Status</th><th>Registered</th></tr></thead><tbody id="wh-tbody"></tbody></table></div></div>
+      </div>
+
+      <div class="page" id="page-audit">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;align-items:center">
+          <select class="filter-select" id="audit-type"><option value="">All event types</option><option value="record.created">record.created</option><option value="record.updated">record.updated</option><option value="record.revoked">record.revoked</option><option value="account.created">account.created</option><option value="account.suspended">account.suspended</option><option value="account.reactivated">account.reactivated</option></select>
+          <div class="search-wrap" style="max-width:220px"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" id="audit-acct" placeholder="Filter by account…"></div>
+          <button class="btn btn-secondary btn-sm" id="audit-refresh-btn">↻ Refresh</button>
+          <span id="audit-count" style="margin-left:auto;font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div class="card">
+          <div class="audit-header-row"><div class="audit-col-label">Timestamp</div><div class="audit-col-label">Account</div><div class="audit-col-label">Event</div><div class="audit-col-label">Detail</div></div>
+          <div id="audit-list"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- New Account Modal -->
+<div id="modal-new-acct" style="display:none">
+  <div class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title">Create Account</div><button class="modal-close" id="modal-close-btn"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Account ID <span class="req">*</span></label><input class="mono" id="na-id" placeholder="bright_energy"></div>
+          <div class="form-group"><label>Secret Key</label><input class="mono" id="na-secret" placeholder="auto-generated"><span class="form-hint">Leave blank to auto-generate</span></div>
+          <div class="form-group full"><label>Display Name <span class="req">*</span></label><input id="na-name" placeholder="Bright Energy Ltd"></div>
+          <div class="form-group"><label>DUID</label><input class="mono" id="na-duid" placeholder="auto-generated"><span class="form-hint">Leave blank to auto-generate</span></div>
+          <div class="form-group"><label>Role <span class="req">*</span></label><select id="na-role"><option value="data_user">data_user</option><option value="data_provider">data_provider</option><option value="dcc">dcc</option><option value="admin">admin</option></select></div>
+          <div class="form-group full"><label>Contact URL</label><input type="url" id="na-url" placeholder="https://example.com/contact"></div>
+        </div>
+        <div class="result-box" id="na-result" style="display:none">
+          <div class="result-box-title">Account created — save these credentials now</div>
+          <div class="result-box-body"><div>Account ID: <strong id="r-id"></strong></div><div>Secret Key: <strong id="r-secret"></strong></div><div>DUID: <strong id="r-duid"></strong></div></div>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" id="modal-cancel-btn">Cancel</button><button class="btn btn-primary" id="na-btn">Create Account</button></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { DarAPI } from '/ui/lib/dar-api.js';
+import { toast, openModal, closeModal, stateBadge, roleBadge, statusBadge,
+         renderAuditList, setTableLoading, setTableEmpty,
+         fmtDate, randHex, copyToClipboard, debounce, openDrawer, closeDrawer } from '/ui/lib/dar-components.js';
+
+const API_BASE = location.hostname === 'admin.central.consent'
+  ? 'https://api.central.consent'
+  : `http://${location.hostname}:5001`;
+
+DarAPI.init({ apiBase: API_BASE, onUnauthorised: doLogout });
+document.getElementById('api-host').textContent = new URL(API_BASE).host;
+
+let allAccounts = [], allRecords = [];
+
+// ── Wire up all event listeners (no inline onclick) ──────────────────────────
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('login-secret').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('logout-btn').addEventListener('click', doLogout);
+document.getElementById('view-audit-btn').addEventListener('click', () => showPage('audit'));
+document.getElementById('acct-search').addEventListener('input', filterAccounts);
+document.getElementById('acct-role').addEventListener('change', filterAccounts);
+document.getElementById('rec-search').addEventListener('keydown', e => { if (e.key === 'Enter') searchRecords(); });
+document.getElementById('rec-search-btn').addEventListener('click', searchRecords);
+document.getElementById('audit-type').addEventListener('change', loadAudit);
+document.getElementById('audit-acct').addEventListener('input', debounce(loadAudit));
+document.getElementById('audit-refresh-btn').addEventListener('click', loadAudit);
+document.getElementById('modal-close-btn').addEventListener('click', () => closeModal('modal-new-acct'));
+document.getElementById('modal-cancel-btn').addEventListener('click', () => closeModal('modal-new-acct'));
+document.getElementById('na-btn').addEventListener('click', submitNewAccount);
+document.querySelector('#modal-new-acct .modal-backdrop').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal('modal-new-acct');
+});
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => showPage(el.dataset.page));
+});
+
+if (DarAPI.isAuthenticated()) showApp();
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const id = document.getElementById('login-account').value.trim();
+  const sk = document.getElementById('login-secret').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  try {
+    const res = await DarAPI.login(id, sk);
+    if (!res.ok) { errEl.textContent = 'Invalid credentials or insufficient permissions.'; errEl.style.display = 'block'; return; }
+    showApp();
+  } catch(e) {
+    errEl.textContent = `Cannot reach API at ${API_BASE}`; errEl.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  DarAPI.logout();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-secret').value = '';
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('sidebar-uname').textContent = DarAPI.getAccountId();
+  loadDashboard();
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+const PAGE_TITLES = { dashboard:'Dashboard', accounts:'Accounts', records:'Access Records', webhooks:'Webhooks', audit:'Audit Log' };
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelector(`.nav-item[data-page="${id}"]`).classList.add('active');
+  document.getElementById('page-title').textContent = PAGE_TITLES[id];
+  const tr = document.getElementById('topbar-right'); tr.innerHTML = '';
+  if (id === 'accounts') {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary btn-sm'; btn.textContent = '+ New Account';
+    btn.addEventListener('click', openNewAcctModal); tr.appendChild(btn);
+    loadAccounts();
+  } else if (id === 'records')  { searchRecords(); }
+  else if (id === 'webhooks') { loadWebhooks(); }
+  else if (id === 'audit')    { loadAudit(); }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const r = await DarAPI.get('/v1/admin/stats'); if (!r) return;
+  const d = await r.json();
+  document.getElementById('s-accounts').textContent = d.total_accounts;
+  document.getElementById('s-accounts-sub').textContent = `${d.active_accounts} active`;
+  document.getElementById('s-active').textContent = d.active_records;
+  document.getElementById('s-records-sub').textContent = `of ${d.total_records} total`;
+  document.getElementById('s-revoked').textContent = d.revoked_records;
+  document.getElementById('s-webhooks').textContent = d.active_webhooks;
+  document.getElementById('s-webhooks-sub').textContent = `of ${d.total_webhooks} total`;
+  document.getElementById('nb-accounts').textContent = d.total_accounts;
+  document.getElementById('nb-records').textContent = d.total_records;
+  document.getElementById('nb-webhooks').textContent = d.total_webhooks;
+  const ar = await DarAPI.get('/v1/admin/audit?limit=8'); if (!ar) return;
+  renderAuditList((await ar.json()).events || [], 'dash-audit');
+}
+
+// ── Accounts ──────────────────────────────────────────────────────────────────
+async function loadAccounts() {
+  setTableLoading('acct-tbody', 7);
+  const r = await DarAPI.get('/v1/admin/accounts'); if (!r) return;
+  allAccounts = (await r.json()).accounts || [];
+  renderAccounts(allAccounts);
+}
+
+function filterAccounts() {
+  const q = document.getElementById('acct-search').value.toLowerCase();
+  const role = document.getElementById('acct-role').value;
+  let f = allAccounts;
+  if (q) f = f.filter(a => a['account-id'].toLowerCase().includes(q) || (a['display-name']||'').toLowerCase().includes(q));
+  if (role) f = f.filter(a => a.role === role);
+  renderAccounts(f);
+}
+
+function renderAccounts(list) {
+  if (!list.length) { setTableEmpty('acct-tbody', 7, 'No accounts found'); return; }
+  const tb = document.getElementById('acct-tbody');
+  tb.innerHTML = '';
+  list.forEach(a => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-mono">${a['account-id']}<button class="copy-btn" data-copy="${a['account-id']}" title="Copy">⎘</button></td>
+      <td>${a['display-name']||'—'}</td>
+      <td>${roleBadge(a.role)}</td>
+      <td class="td-mono td-muted">${(a.duid||'').substring(0,20)}…<button class="copy-btn" data-copy="${a.duid||''}" title="Copy">⎘</button></td>
+      <td>${statusBadge(a.status)}</td>
+      <td class="td-muted">${fmtDate(a['registered-at'])}</td>
+      <td>${a.status==='active'
+        ? `<button class="btn btn-danger btn-sm" data-action="suspend" data-id="${a['account-id']}">Suspend</button>`
+        : `<button class="btn btn-secondary btn-sm" data-action="reactivate" data-id="${a['account-id']}">Reactivate</button>`}</td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => copyToClipboard(b.dataset.copy)));
+  tb.querySelectorAll('[data-action="suspend"]').forEach(b => b.addEventListener('click', () => suspendAcct(b.dataset.id)));
+  tb.querySelectorAll('[data-action="reactivate"]').forEach(b => b.addEventListener('click', () => reactivateAcct(b.dataset.id)));
+}
+
+async function suspendAcct(id) {
+  if (!confirm(`Suspend account "${id}"?`)) return;
+  const r = await DarAPI.post(`/v1/admin/accounts/${id}/suspend`);
+  if (r?.ok) { toast('Account suspended', 'success'); loadAccounts(); } else toast('Failed', 'error');
+}
+
+async function reactivateAcct(id) {
+  const r = await DarAPI.post(`/v1/admin/accounts/${id}/reactivate`);
+  if (r?.ok) { toast('Account reactivated', 'success'); loadAccounts(); } else toast('Failed', 'error');
+}
+
+function openNewAcctModal() {
+  document.getElementById('na-duid').value = `duid_${randHex(12)}`;
+  document.getElementById('na-secret').value = randHex(24);
+  document.getElementById('na-result').style.display = 'none';
+  document.getElementById('na-btn').disabled = false;
+  document.getElementById('na-btn').textContent = 'Create Account';
+  ['na-id','na-name','na-url'].forEach(id => document.getElementById(id).value = '');
+  openModal('modal-new-acct');
+}
+
+async function submitNewAccount() {
+  const id   = document.getElementById('na-id').value.trim();
+  const sk   = document.getElementById('na-secret').value.trim() || randHex(24);
+  const name = document.getElementById('na-name').value.trim();
+  const duid = document.getElementById('na-duid').value.trim() || `duid_${randHex(12)}`;
+  const role = document.getElementById('na-role').value;
+  const url  = document.getElementById('na-url').value.trim();
+  if (!id || !name) { toast('Account ID and Display Name required', 'error'); return; }
+  const btn = document.getElementById('na-btn'); btn.disabled = true; btn.textContent = 'Creating…';
+  const r = await DarAPI.post('/v1/admin/accounts', { 'account-id':id,'secret-key':sk,'display-name':name,duid,role,...(url?{'contact-url':url}:{}) });
+  if (!r) { btn.disabled=false; btn.textContent='Create Account'; return; }
+  const data = await r.json();
+  if (!r.ok) { toast(data.errors?.[0]?.message||'Failed','error'); btn.disabled=false; btn.textContent='Create Account'; return; }
+  document.getElementById('r-id').textContent = id;
+  document.getElementById('r-secret').textContent = sk;
+  document.getElementById('r-duid').textContent = duid;
+  document.getElementById('na-result').style.display = 'block';
+  btn.textContent = 'Created ✓';
+  toast('Account created', 'success');
+  loadAccounts();
+}
+
+// ── Records ───────────────────────────────────────────────────────────────────
+async function searchRecords() {
+  const q     = document.getElementById('rec-search').value.trim();
+  const state = document.getElementById('rec-state').value;
+  const basis = document.getElementById('rec-basis').value;
+  setTableLoading('rec-tbody', 7);
+  const p = new URLSearchParams();
+  if (q) p.set('q', q); if (state) p.set('state', state); if (basis) p.set('legal-basis', basis);
+  const r = await DarAPI.get(`/v1/admin/records?${p}`); if (!r) return;
+  allRecords = (await r.json()).records || [];
+  renderRecords(allRecords);
+}
+
+function renderRecords(list) {
+  if (!list.length) { setTableEmpty('rec-tbody', 7); return; }
+  const tb = document.getElementById('rec-tbody'); tb.innerHTML = '';
+  list.forEach(rec => {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.innerHTML = `
+      <td class="td-mono" style="font-size:11px">${rec.ak}</td>
+      <td>${rec['lead-controller-name']||'—'}</td>
+      <td class="td-mono">${rec.mpxn||'—'}</td>
+      <td><span class="badge badge-grey badge-mono">${rec['legal-basis']||'—'}</span></td>
+      <td>${stateBadge(rec.state)}</td>
+      <td class="td-muted">${rec.expiry ? fmtDate(rec.expiry) : 'No expiry'}</td>
+      <td><button class="btn btn-secondary btn-sm">View →</button></td>`;
+    tr.addEventListener('click', () => openRecDrawer(rec.ak));
+    tr.querySelector('button').addEventListener('click', e => { e.stopPropagation(); openRecDrawer(rec.ak); });
+    tb.appendChild(tr);
+  });
+}
+
+function openRecDrawer(ak) {
+  const rec = allRecords.find(r => r.ak === ak); if (!rec) return;
+  openDrawer({
+    ak,
+    sections: [
+      { title: 'Record', rows: [
+        ['Access Key', ak], ['State', stateBadge(rec.state)],
+        ['MPxN', rec.mpxn], ['DUID', rec.duid],
+        ['Created', fmtDate(rec['created-at'])],
+        ...(rec['revoked-at'] ? [['Revoked', fmtDate(rec['revoked-at'])]] : []),
+      ]},
+      { title: 'Controller', rows: [['Name', `<span style="font-family:var(--sans)">${rec['lead-controller-name']||'—'}</span>`]] },
+      { title: 'Processing', rows: [
+        ['Legal Basis', rec['legal-basis']],
+        ['Purpose', `<span style="font-family:var(--sans)">${rec.purpose||'—'}</span>`],
+        ['Data Types', (rec['data-types']||[]).join(', ')],
+        ['Expiry', rec.expiry ? fmtDate(rec.expiry) : 'No expiry'],
+      ]},
+    ],
+    footer: rec.state === 'ACTIVE'
+      ? `<button class="btn btn-danger" id="drawer-revoke-btn">Revoke Record</button><button class="btn btn-secondary" id="drawer-close-btn">Close</button>`
+      : `<button class="btn btn-secondary" id="drawer-close-btn">Close</button>`,
+  });
+  document.getElementById('drawer-close-btn')?.addEventListener('click', closeDrawer);
+  document.getElementById('drawer-revoke-btn')?.addEventListener('click', async () => {
+    if (!confirm(`Revoke ${ak}?\nThis cannot be undone.`)) return;
+    const r = await DarAPI.del(`/v1/access-records/${ak}`);
+    if (r?.ok) { toast('Record revoked','success'); closeDrawer(); searchRecords(); }
+    else toast('Failed to revoke','error');
+  });
+}
+
+// ── Webhooks ──────────────────────────────────────────────────────────────────
+async function loadWebhooks() {
+  setTableLoading('wh-tbody', 6);
+  const r = await DarAPI.get('/v1/admin/webhooks'); if (!r) return;
+  const hooks = (await r.json()).webhooks || [];
+  if (!hooks.length) { setTableEmpty('wh-tbody', 6, 'No webhooks registered'); return; }
+  document.getElementById('wh-tbody').innerHTML = hooks.map(h => `
+    <tr>
+      <td class="td-mono" style="font-size:11px">${h.wid}</td>
+      <td class="td-mono td-muted">${(h.duid||'').substring(0,20)}…</td>
+      <td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${h['callback-url']}">${h['callback-url'] || '—'}</td>
+      <td style="font-size:11px;font-family:var(--mono)">${(h['event-types']||[]).join(', ')}</td>
+      <td><span class="badge ${h.active?'badge-green':'badge-grey'}">${h.active?'active':'inactive'}</span></td>
+      <td class="td-muted">${fmtDate(h['registered-at'])}</td>
+    </tr>`).join('');
+}
+
+// ── Audit ─────────────────────────────────────────────────────────────────────
+async function loadAudit() {
+  const et = document.getElementById('audit-type').value;
+  const ac = document.getElementById('audit-acct').value.trim();
+  const p = new URLSearchParams({ limit: 100 });
+  if (et) p.set('event_type', et); if (ac) p.set('account_id', ac);
+  const r = await DarAPI.get(`/v1/admin/audit?${p}`); if (!r) return;
+  const evts = (await r.json()).events || [];
+  document.getElementById('audit-count').textContent = `${evts.length} events`;
+  renderAuditList(evts, 'audit-list');
+}
+</script>
+</body>
+</html>

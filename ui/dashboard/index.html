@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DAR Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ui/lib/dar-styles.css">
+<style>
+/* Dashboard token overrides — indigo accent, warmer surfaces */
+:root {
+  --accent:     #4f46e5;
+  --accent-bg:  #eef2ff;
+  --accent-dim: #c7d2fe;
+  --bg:         #f8f8fb;
+  --surface:    #ffffff;
+  --border:     #e8e8f0;
+  --border2:    #d4d4e0;
+}
+
+/* Warmer, slightly larger type */
+body { font-size: 14px; }
+
+/* Sidebar — soft indigo tint on active */
+.nav-item.active { background: var(--accent-bg); color: var(--accent); }
+
+/* Topbar greeting strip */
+.greeting-bar {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  padding: 24px 32px 20px;
+  margin: -28px -28px 28px;
+  color: white;
+}
+.greeting-name { font-size: 20px; font-weight: 600; margin-bottom: 2px; }
+.greeting-sub  { font-size: 13px; opacity: .8; }
+.greeting-duid { font-family: var(--mono); font-size: 11px; opacity: .6; margin-top: 6px; }
+
+/* Stats — 3-col for dashboard */
+.stats-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+
+/* Account card */
+.account-card { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.account-field label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; display: block; }
+.account-field .value { font-size: 14px; font-family: var(--mono); }
+.account-field .value.plain { font-family: var(--sans); }
+
+/* Revoke modal warning */
+.revoke-warning { padding: 12px 14px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: var(--radius); font-size: 12px; color: #9a3412; margin-bottom: 16px; }
+
+/* Secret rotation */
+.secret-zone { padding: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
+.secret-zone-title { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.secret-zone-sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+.new-secret-display { font-family: var(--mono); font-size: 13px; padding: 10px 14px; background: var(--accent-bg); border: 1px solid var(--accent-dim); border-radius: var(--radius); margin-top: 12px; word-break: break-all; }
+.new-secret-label { font-size: 11px; color: var(--accent); font-weight: 600; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-mark" style="background:#4f46e5">
+        <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <div><div class="login-title">DAR Dashboard</div><div class="login-sub">Data Access Register</div></div>
+    </div>
+    <label>Account ID</label>
+    <input type="text" id="login-account" placeholder="your_account_id" autocomplete="username">
+    <label>Secret Key</label>
+    <input type="password" id="login-secret" placeholder="••••••••" autocomplete="current-password">
+    <div id="login-error" style="display:none;color:var(--red);font-size:12px;margin-bottom:12px"></div>
+    <button class="btn btn-primary btn-full" id="login-btn" style="background:#4f46e5;border-color:#4f46e5">Sign in</button>
+  </div>
+</div>
+
+<div class="shell" id="app" style="display:none">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-row">
+        <div class="logo-icon" style="background:#4f46e5">
+          <svg width="14" height="14" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <div><div class="logo-name">DAR</div><span class="logo-env" id="api-host">localhost:5001</span></div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active" data-page="overview">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Overview
+      </div>
+      <div class="nav-label">Data</div>
+      <div class="nav-item" data-page="records">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+        Access Records
+        <span class="nav-badge" id="nb-records">—</span>
+      </div>
+      <div class="nav-item" data-page="webhooks">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Webhooks
+        <span class="nav-badge" id="nb-webhooks">—</span>
+      </div>
+      <div class="nav-label">Account</div>
+      <div class="nav-item" data-page="account">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Account &amp; Settings
+      </div>
+      <div class="nav-item" data-page="audit">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Activity Log
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-name" id="sidebar-uname">—</div>
+        <div id="sidebar-org">data_user</div>
+      </div>
+      <button class="btn-logout" id="logout-btn" title="Sign out">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="page-title">Overview</div>
+      <div class="topbar-right" id="topbar-right"></div>
+    </div>
+    <div class="content">
+
+      <!-- Overview -->
+      <div class="page active" id="page-overview">
+        <div class="greeting-bar">
+          <div class="greeting-name" id="greeting-name">Welcome back</div>
+          <div class="greeting-sub">Here's a summary of your access registrations</div>
+          <div class="greeting-duid" id="greeting-duid"></div>
+        </div>
+        <div class="stats-grid-3">
+          <div class="stat-card stat-green"><div class="stat-label">Active Records</div><div class="stat-value" id="s-active">—</div><div class="stat-sub">registered access</div></div>
+          <div class="stat-card stat-amber"><div class="stat-label">Expiring Soon</div><div class="stat-value" id="s-expiring">—</div><div class="stat-sub">within 30 days</div></div>
+          <div class="stat-card"><div class="stat-label">Webhooks</div><div class="stat-value" id="s-webhooks">—</div><div class="stat-sub" id="s-webhooks-sub">active</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Recent Activity</div><button class="btn btn-secondary btn-sm" id="view-audit-btn">View all →</button></div>
+          <div id="dash-audit"></div>
+        </div>
+      </div>
+
+      <!-- Access Records -->
+      <div class="page" id="page-records">
+        <div class="card">
+          <div class="filter-bar">
+            <div class="search-wrap">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input class="search-input" id="rec-search" placeholder="Search by MPxN or ak_…">
+            </div>
+            <select class="filter-select" id="rec-state">
+              <option value="">All states</option><option>ACTIVE</option><option>REVOKED</option><option>EXPIRED</option>
+            </select>
+            <select class="filter-select" id="rec-basis">
+              <option value="">All legal bases</option>
+              <option value="uk-consent">uk-consent</option>
+              <option value="uk-explicit-consent">uk-explicit-consent</option>
+              <option value="uk-legitimate-interests">uk-legitimate-interests</option>
+              <option value="uk-public-task">uk-public-task</option>
+              <option value="uk-legal-obligation">uk-legal-obligation</option>
+              <option value="uk-contract">uk-contract</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" id="rec-search-btn">Search</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Access Key</th><th>Controller</th><th>MPxN</th><th>Legal Basis</th><th>State</th><th>Expiry</th><th></th></tr></thead>
+              <tbody id="rec-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Webhooks -->
+      <div class="page" id="page-webhooks">
+        <div class="card">
+          <div class="filter-bar" style="border-bottom:none;padding-bottom:0">
+            <div style="flex:1"></div>
+            <button class="btn btn-primary btn-sm" id="new-webhook-btn" style="background:#4f46e5;border-color:#4f46e5">+ Add Webhook</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>URL</th><th>Events</th><th>Status</th><th>Registered</th><th></th></tr></thead>
+              <tbody id="wh-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Account -->
+      <div class="page" id="page-account">
+        <div style="display:grid;gap:20px;max-width:680px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Account Details</div></div>
+            <div class="card-body">
+              <div class="account-card" id="account-details">
+                <div style="color:var(--muted);font-size:13px">Loading…</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Secret Key</div></div>
+            <div class="card-body">
+              <div class="secret-zone">
+                <div class="secret-zone-title">Rotate Secret Key</div>
+                <div class="secret-zone-sub">Generates a new secret immediately. Your current secret will stop working. Update any integrations before rotating.</div>
+                <button class="btn btn-danger btn-sm" id="rotate-btn">Rotate Secret</button>
+                <div id="new-secret-box" style="display:none">
+                  <div class="new-secret-display">
+                    <div class="new-secret-label">New secret key — copy now, shown once only</div>
+                    <div id="new-secret-value"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audit -->
+      <div class="page" id="page-audit">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;align-items:center">
+          <select class="filter-select" id="audit-type">
+            <option value="">All event types</option>
+            <option value="record.created">record.created</option>
+            <option value="record.updated">record.updated</option>
+            <option value="record.revoked">record.revoked</option>
+            <option value="account.secret-rotated">account.secret-rotated</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" id="audit-refresh-btn">↻ Refresh</button>
+          <span id="audit-count" style="margin-left:auto;font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div class="card">
+          <div class="audit-header-row">
+            <div class="audit-col-label">Timestamp</div>
+            <div class="audit-col-label">Account</div>
+            <div class="audit-col-label">Event</div>
+            <div class="audit-col-label">Detail</div>
+          </div>
+          <div id="audit-list"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Revoke Modal -->
+<div id="modal-revoke" style="display:none">
+  <div class="modal-backdrop">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-header">
+        <div class="modal-title">Revoke Access Record</div>
+        <button class="modal-close" id="revoke-modal-close"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="revoke-warning">This action is permanent. The record will be marked REVOKED and Data Providers will deny further access.</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px" id="revoke-ak-label"></div>
+        <div class="form-group">
+          <label>Reason for revocation <span class="req">*</span></label>
+          <select id="revoke-reason">
+            <option value="">Select a reason…</option>
+            <option value="customer-request">Customer request</option>
+            <option value="contract-ended">Contract ended</option>
+            <option value="lia-lapsed">LIA lapsed</option>
+            <option value="statutory-authority-lapsed">Statutory authority lapsed</option>
+            <option value="data-no-longer-required">Data no longer required</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="revoke-cancel-btn">Cancel</button>
+        <button class="btn btn-danger" id="revoke-confirm-btn">Revoke Record</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Webhook Modal -->
+<div id="modal-webhook" style="display:none">
+  <div class="modal-backdrop">
+    <div class="modal" style="max-width:460px">
+      <div class="modal-header">
+        <div class="modal-title">Add Webhook</div>
+        <button class="modal-close" id="wh-modal-close"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group section-gap">
+          <label>Endpoint URL <span class="req">*</span></label>
+          <input class="mono" type="url" id="wh-url" placeholder="https://your-app.com/webhooks/dar">
+          <span class="form-hint">Must be HTTPS</span>
+        </div>
+        <div class="form-group">
+          <label>Alert Email <span class="req">*</span></label>
+          <input type="email" id="wh-email" placeholder="ops@yourcompany.com">
+          <span class="form-hint">Notified if repeated delivery failures occur</span>
+        </div>
+        <div class="form-group">
+          <label>Event Types</label>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);font-weight:400"><input type="checkbox" id="wh-evt-withdrawal" checked> consent.withdrawal</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);font-weight:400"><input type="checkbox" id="wh-evt-expiring" checked> consent.expiring</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);font-weight:400"><input type="checkbox" id="wh-evt-tenancy" checked> tenancy.change</label>
+          </div>
+        </div>
+        <div class="result-box" id="wh-result" style="display:none;margin-top:16px">
+          <div class="result-box-title">Webhook created — save the signing secret now</div>
+          <div class="result-box-body">
+            <div>Signing Secret: <strong id="wh-signing-secret"></strong></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="wh-cancel-btn">Cancel</button>
+        <button class="btn btn-primary" id="wh-submit-btn" style="background:#4f46e5;border-color:#4f46e5">Add Webhook</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { DarAPI } from '/ui/lib/dar-api.js';
+import { toast, openModal, closeModal, stateBadge, eventTypeBadge,
+         renderAuditList, setTableLoading, setTableEmpty,
+         fmtDate, copyToClipboard, debounce, openDrawer, closeDrawer } from '/ui/lib/dar-components.js';
+
+const API_BASE = location.hostname === 'dashboard.central.consent'
+  ? 'https://api.central.consent'
+  : `http://${location.hostname}:5001`;
+
+DarAPI.init({ apiBase: API_BASE, onUnauthorised: doLogout });
+document.getElementById('api-host').textContent = new URL(API_BASE).host;
+
+let allRecords = [], allWebhooks = [], revokeTarget = null;
+
+// ── Wire up all listeners ─────────────────────────────────────────────────────
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('login-secret').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('logout-btn').addEventListener('click', doLogout);
+document.getElementById('view-audit-btn').addEventListener('click', () => showPage('audit'));
+document.getElementById('rec-search').addEventListener('keydown', e => { if (e.key === 'Enter') loadRecords(); });
+document.getElementById('rec-search-btn').addEventListener('click', loadRecords);
+document.getElementById('rec-state').addEventListener('change', loadRecords);
+document.getElementById('rec-basis').addEventListener('change', loadRecords);
+document.getElementById('new-webhook-btn').addEventListener('click', openWebhookModal);
+document.getElementById('rotate-btn').addEventListener('click', rotateSecret);
+document.getElementById('audit-type').addEventListener('change', loadAudit);
+document.getElementById('audit-refresh-btn').addEventListener('click', loadAudit);
+
+// Revoke modal
+document.getElementById('revoke-modal-close').addEventListener('click', () => closeModal('modal-revoke'));
+document.getElementById('revoke-cancel-btn').addEventListener('click', () => closeModal('modal-revoke'));
+document.getElementById('revoke-confirm-btn').addEventListener('click', confirmRevoke);
+document.querySelector('#modal-revoke .modal-backdrop').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('modal-revoke'); });
+
+// Webhook modal
+document.getElementById('wh-modal-close').addEventListener('click', () => closeModal('modal-webhook'));
+document.getElementById('wh-cancel-btn').addEventListener('click', () => closeModal('modal-webhook'));
+document.getElementById('wh-submit-btn').addEventListener('click', submitWebhook);
+document.querySelector('#modal-webhook .modal-backdrop').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('modal-webhook'); });
+
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => showPage(el.dataset.page));
+});
+
+if (DarAPI.isAuthenticated()) showApp();
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const id = document.getElementById('login-account').value.trim();
+  const sk = document.getElementById('login-secret').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  try {
+    const res = await DarAPI.login(id, sk);
+    if (!res.ok) { errEl.textContent = 'Invalid credentials.'; errEl.style.display = 'block'; return; }
+    showApp();
+  } catch(e) {
+    errEl.textContent = `Cannot reach API at ${API_BASE}`; errEl.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  DarAPI.logout();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-secret').value = '';
+}
+
+async function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('sidebar-uname').textContent = DarAPI.getAccountId();
+  // Load own profile
+  const r = await DarAPI.get('/v1/self');
+  if (r?.ok) {
+    const d = (await r.json()).account;
+    document.getElementById('greeting-name').textContent = `Welcome back, ${d['display-name'] || DarAPI.getAccountId()}`;
+    document.getElementById('greeting-duid').textContent = d.duid;
+    document.getElementById('sidebar-org').textContent = d['display-name'] || 'data_user';
+    renderAccountDetails(d);
+  }
+  loadOverview();
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+const PAGE_TITLES = { overview:'Overview', records:'Access Records', webhooks:'Webhooks', account:'Account & Settings', audit:'Activity Log' };
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelector(`.nav-item[data-page="${id}"]`).classList.add('active');
+  document.getElementById('page-title').textContent = PAGE_TITLES[id];
+  if (id === 'records')  loadRecords();
+  else if (id === 'webhooks') loadWebhooks();
+  else if (id === 'audit')    loadAudit();
+}
+
+// ── Overview ──────────────────────────────────────────────────────────────────
+async function loadOverview() {
+  // Fetch webhooks (uses data_user token — correct endpoint)
+  const whr = await DarAPI.get('/v1/webhooks');
+  if (whr?.ok) {
+    const hooks = (await whr.json()).webhooks || [];
+    const active = hooks.filter(h => h.active).length;
+    document.getElementById('s-webhooks').textContent = active;
+    document.getElementById('s-webhooks-sub').textContent = `of ${hooks.length} total`;
+    document.getElementById('nb-webhooks').textContent = hooks.length;
+  }
+  // Record counts come from loadRecords result — trigger a background load
+  loadRecordsForOverview();
+}
+
+async function loadRecordsForOverview() {
+  // data_user can only see records via the admin endpoint if they also have admin role,
+  // otherwise this returns 403. We show what we can and fail gracefully.
+  const r = await DarAPI.get('/v1/records?limit=500');
+  if (!r || !r.ok) {
+    document.getElementById('s-active').textContent = '—';
+    document.getElementById('s-expiring').textContent = '—';
+    document.getElementById('nb-records').textContent = '—';
+    return;
+  }
+  const data = await r.json();
+  const myRecs = data.records || [];
+  const active = myRecs.filter(r => r.state === 'ACTIVE');
+  document.getElementById('s-active').textContent = active.length;
+  document.getElementById('nb-records').textContent = myRecs.length;
+  const soon = active.filter(rec => {
+    if (!rec.expiry) return false;
+    const days = (new Date(rec.expiry) - Date.now()) / 86400000;
+    return days >= 0 && days <= 30;
+  });
+  document.getElementById('s-expiring').textContent = soon.length;
+
+  // Activity feed — admin only, fail gracefully
+  const ar = await DarAPI.get('/v1/admin/audit?limit=8');
+  if (ar?.ok) renderAuditList((await ar.json()).events || [], 'dash-audit');
+  else {
+    const el = document.getElementById('dash-audit');
+    if (el) el.innerHTML = '<div class="empty-feed">Activity log requires admin role</div>';
+  }
+}
+
+// ── Records ───────────────────────────────────────────────────────────────────
+async function loadRecords() {
+  const q     = document.getElementById('rec-search').value.trim();
+  const state = document.getElementById('rec-state').value;
+  const basis = document.getElementById('rec-basis').value;
+  setTableLoading('rec-tbody', 7);
+  const p = new URLSearchParams();
+  if (q) p.set('q', q); if (state) p.set('state', state); if (basis) p.set('legal-basis', basis);
+  const r = await DarAPI.get(`/v1/records?${p}`);
+  if (!r || !r.ok) { setTableEmpty('rec-tbody', 7, 'Failed to load records'); return; }
+  const data = await r.json();
+  allRecords = data.records || [];
+  renderRecords(allRecords);
+}
+
+function renderRecords(list) {
+  if (!list.length) { setTableEmpty('rec-tbody', 7); return; }
+  const tb = document.getElementById('rec-tbody'); tb.innerHTML = '';
+  list.forEach(rec => {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.innerHTML = `
+      <td class="td-mono" style="font-size:11px">${rec.ak}</td>
+      <td>${rec.controller||'—'}</td>
+      <td class="td-mono">${rec.mpxn||'—'}</td>
+      <td><span class="badge badge-grey badge-mono">${rec['legal-basis']||'—'}</span></td>
+      <td>${stateBadge(rec.state)}</td>
+      <td class="td-muted">${rec.expiry ? fmtDate(rec.expiry) : 'No expiry'}</td>
+      <td><button class="btn btn-secondary btn-sm">View →</button></td>`;
+    tr.addEventListener('click', () => openRecDrawer(rec.ak));
+    tr.querySelector('button').addEventListener('click', e => { e.stopPropagation(); openRecDrawer(rec.ak); });
+    tb.appendChild(tr);
+  });
+}
+
+function openRecDrawer(ak) {
+  const rec = allRecords.find(r => r.ak === ak); if (!rec) return;
+  openDrawer({
+    ak,
+    sections: [
+      { title: 'Record', rows: [
+        ['Access Key', ak], ['State', stateBadge(rec.state)],
+        ['MPxN', rec.mpxn], ['Created', fmtDate(rec['created-at'])],
+        ...(rec['revoked-at'] ? [['Revoked', fmtDate(rec['revoked-at'])]] : []),
+      ]},
+      { title: 'Controller', rows: [['Name', `<span style="font-family:var(--sans)">${rec.controller||'—'}</span>`]] },
+      { title: 'Processing', rows: [
+        ['Legal Basis', rec['legal-basis']],
+        ['Purpose', `<span style="font-family:var(--sans)">${rec.purpose||'—'}</span>`],
+        ['Data Types', (rec['data-types']||[]).join(', ')],
+        ['Expiry', rec.expiry ? fmtDate(rec.expiry) : 'No expiry'],
+      ]},
+    ],
+    footer: rec.state === 'ACTIVE'
+      ? `<button class="btn btn-danger" id="drawer-revoke-btn">Revoke…</button><button class="btn btn-secondary" id="drawer-close-btn">Close</button>`
+      : `<button class="btn btn-secondary" id="drawer-close-btn">Close</button>`,
+  });
+  document.getElementById('drawer-close-btn')?.addEventListener('click', closeDrawer);
+  document.getElementById('drawer-revoke-btn')?.addEventListener('click', () => {
+    closeDrawer();
+    openRevokeModal(ak);
+  });
+}
+
+function openRevokeModal(ak) {
+  revokeTarget = ak;
+  document.getElementById('revoke-ak-label').textContent = ak;
+  document.getElementById('revoke-reason').value = '';
+  openModal('modal-revoke');
+}
+
+async function confirmRevoke() {
+  const reason = document.getElementById('revoke-reason').value;
+  if (!reason) { toast('Please select a reason', 'error'); return; }
+  const btn = document.getElementById('revoke-confirm-btn');
+  btn.disabled = true; btn.textContent = 'Revoking…';
+  const r = await DarAPI.del(`/v1/access-records/${revokeTarget}?reason=${encodeURIComponent(reason)}`);
+  btn.disabled = false; btn.textContent = 'Revoke Record';
+  if (r?.ok) {
+    toast('Record revoked', 'success');
+    closeModal('modal-revoke');
+    loadRecords();
+    loadOverview();
+  } else {
+    toast('Failed to revoke record', 'error');
+  }
+}
+
+// ── Webhooks ──────────────────────────────────────────────────────────────────
+async function loadWebhooks() {
+  setTableLoading('wh-tbody', 5);
+  const r = await DarAPI.get('/v1/webhooks'); if (!r) return;
+  allWebhooks = (await r.json()).webhooks || [];
+  renderWebhooks(allWebhooks);
+}
+
+function renderWebhooks(list) {
+  if (!list.length) { setTableEmpty('wh-tbody', 5, 'No webhooks — add one to receive events'); return; }
+  const tb = document.getElementById('wh-tbody'); tb.innerHTML = '';
+  list.forEach(h => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${h['callback-url']}">${h['callback-url'] || '—'}</td>
+      <td style="font-size:11px;font-family:var(--mono)">${(h['event-types']||[]).join(', ')}</td>
+      <td><span class="badge ${h.active?'badge-green':'badge-grey'}">${h.active?'active':'inactive'}</span></td>
+      <td class="td-muted">${fmtDate(h['registered-at'])}</td>
+      <td><button class="btn btn-danger btn-sm" data-wid="${h.wid}">Delete</button></td>`;
+    tr.querySelector('button').addEventListener('click', () => deleteWebhook(h.wid));
+    tb.appendChild(tr);
+  });
+}
+
+function openWebhookModal() {
+  document.getElementById('wh-url').value = '';
+  document.getElementById('wh-email').value = '';
+  document.getElementById('wh-result').style.display = 'none';
+  document.getElementById('wh-submit-btn').disabled = false;
+  document.getElementById('wh-submit-btn').textContent = 'Add Webhook';
+  ['wh-evt-withdrawal','wh-evt-expiring','wh-evt-tenancy'].forEach(id => { document.getElementById(id).checked = true; });
+  openModal('modal-webhook');
+}
+
+async function submitWebhook() {
+  const url   = document.getElementById('wh-url').value.trim();
+  const email = document.getElementById('wh-email').value.trim();
+  if (!url || !url.startsWith('https://')) { toast('HTTPS URL required', 'error'); return; }
+  if (!email || !email.includes('@')) { toast('Alert email required', 'error'); return; }
+  const events = [];
+  if (document.getElementById('wh-evt-withdrawal').checked) events.push('consent.withdrawal');
+  if (document.getElementById('wh-evt-expiring').checked) events.push('consent.expiring');
+  if (document.getElementById('wh-evt-tenancy').checked) events.push('tenancy.change');
+  if (!events.length) { toast('Select at least one event type', 'error'); return; }
+  const btn = document.getElementById('wh-submit-btn'); btn.disabled = true; btn.textContent = 'Adding…';
+  const r = await DarAPI.post('/v1/webhooks', { 'callback-url': url, 'alert-email': email, 'event-types': events });
+  if (!r) { btn.disabled = false; btn.textContent = 'Add Webhook'; return; }
+  const data = await r.json();
+  if (!r.ok) { toast(data.errors?.[0]?.message || 'Failed', 'error'); btn.disabled = false; btn.textContent = 'Add Webhook'; return; }
+  document.getElementById('wh-signing-secret').textContent = data['signing-secret'];
+  document.getElementById('wh-result').style.display = 'block';
+  btn.textContent = 'Added ✓';
+  toast('Webhook added', 'success');
+  loadWebhooks();
+}
+
+async function deleteWebhook(wid) {
+  if (!confirm('Delete this webhook?')) return;
+  const r = await DarAPI.del(`/v1/webhooks/${wid}`);
+  if (r?.ok) { toast('Webhook deleted', 'success'); loadWebhooks(); }
+  else toast('Failed', 'error');
+}
+
+// ── Account ───────────────────────────────────────────────────────────────────
+function renderAccountDetails(d) {
+  const el = document.getElementById('account-details');
+  el.innerHTML = [
+    ['Account ID',    d['account-id'],   true],
+    ['Display Name',  d['display-name'], false],
+    ['DUID',          d.duid,            true],
+    ['Role',          d.role,            true],
+    ['Contact URL',   d['contact-url'] || '—', false],
+    ['Registered',    fmtDate(d['registered-at']), false],
+  ].map(([label, value, mono]) => `
+    <div class="account-field">
+      <label>${label}</label>
+      <div class="value ${mono ? '' : 'plain'}">${value || '—'}</div>
+    </div>`).join('');
+}
+
+async function rotateSecret() {
+  if (!confirm('Rotate your secret key?\n\nYour current secret will stop working immediately. You will need to update all integrations.')) return;
+  const r = await DarAPI.post('/v1/self/rotate-secret');
+  if (!r?.ok) { toast('Failed to rotate secret', 'error'); return; }
+  const data = await r.json();
+  document.getElementById('new-secret-value').textContent = data['secret-key'];
+  document.getElementById('new-secret-box').style.display = 'block';
+  toast('Secret rotated — copy it now', 'success');
+}
+
+// ── Audit ─────────────────────────────────────────────────────────────────────
+async function loadAudit() {
+  const et = document.getElementById('audit-type').value;
+  const p = new URLSearchParams({ limit: 100, account_id: DarAPI.getAccountId() });
+  if (et) p.set('event_type', et);
+  const r = await DarAPI.get(`/v1/admin/audit?${p}`);
+  if (!r || !r.ok) {
+    document.getElementById('audit-count').textContent = '';
+    renderAuditList([], 'audit-list');
+    return;
+  }
+  const evts = (await r.json()).events || [];
+  document.getElementById('audit-count').textContent = `${evts.length} events`;
+  renderAuditList(evts, 'audit-list');
+}
+</script>
+</body>
+</html>
