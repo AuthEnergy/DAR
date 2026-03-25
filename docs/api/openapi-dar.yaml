@@ -74,7 +74,7 @@ info:
     \ except `GET /access-records/{ak}` require a bearer token from\n`GET /auth/token`.\
     \ Tokens expire after 7200 seconds.\n\n## Versioning\n\nURI-based versioning.\
     \ Current version: `v1`.\n"
-  version: 0.0.15
+  version: 0.0.13
   contact:
     name: Auth Energy
     email: contact@auth.energy
@@ -1714,7 +1714,8 @@ paths:
           $ref: '#/components/schemas/MPxN'
       responses:
         '200':
-          description: Existence check result.
+          description: Existence check result including available re-identification
+            methods.
           content:
             application/json:
               schema:
@@ -1726,10 +1727,19 @@ paths:
                     $ref: '#/components/schemas/MPxN'
                   exists:
                     type: boolean
+                  available-methods:
+                    type: array
+                    description: 'Re-identification methods available for this MPxN.
+                      Empty when `exists` is false. Possible values: `passkey-assert`
+                      (credentials registered), `magic-link` (email stored), `passkey-register`
+                      (always present — a new passkey can always be enrolled).'
+                    items:
+                      $ref: '#/components/schemas/ReIdentifyMethod'
                 required:
                 - response
                 - mpxn
                 - exists
+                - available-methods
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':

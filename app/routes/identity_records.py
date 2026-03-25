@@ -181,16 +181,18 @@ def reidentify_by_mpxn(token_payload):
 @require_bearer("data_user")
 def check_identity_record_exists(token_payload):
     """Check if an identity record exists for a given MPxN across all Data Users.
-    Returns exists: true/false only — no ir key or PII exposed.
+    Returns exists boolean and available re-identification methods.
+    No ir key or PII exposed.
     Used by Data User B before initiating cross-DUID re-identification."""
     mpxn = request.args.get("mpxn")
     if not mpxn:
         return err("mpxn required", 400, "VAL001")
-    exists = db.check_identity_record_exists(mpxn)
+    result = db.check_identity_record_exists(mpxn)
     return ok({
-        "response": meta("/v1/identity-records/exists"),
-        "mpxn":     mpxn,
-        "exists":   exists,
+        "response":           meta("/v1/identity-records/exists"),
+        "mpxn":               mpxn,
+        "exists":             result["exists"],
+        "available-methods":  result["available-methods"],
     })
 
 

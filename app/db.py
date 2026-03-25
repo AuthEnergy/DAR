@@ -214,11 +214,23 @@ def lookup_identity_records(duid: str, mpxn: str = None,
             email.lower().encode()).hexdigest()
     return _find("dar_identity", selector)
 
-def check_identity_record_exists(mpxn: str) -> bool:
+def check_identity_record_exists(mpxn: str) -> dict:
     """Check if ANY identity record exists for this MPxN across all Data Users.
-    Returns True/False only — no ir key or PII exposed."""
-    docs = _find("dar_identity", {"type": "identity_record", "mpxn": mpxn}, 1)
-    return len([d for d in docs if not d.get("anonymised_at")]) > 0
+    Returns exists boolean and available re-identification methods.
+    No ir key or PII exposed."""
+    docs = _find("dar_identity", {"type": "identity_record", "mpxn": mpxn})
+    active = [d for d in docs if not d.get("anonymised_at")]
+    if not active:
+        return {"exists": False, "available-methods": []}
+
+    # Use the most recently created record to determine available methods
+    doc = sorted(active, key=lambda d: d.get("created_at", ""), reverse=True)[0]
+    methods = ["passkey-register"]  # always available
+    if doc.get("has_email"):
+        methods.insert(0, "magic-link")
+    if doc.get("credentials"):
+        methods.insert(0, "passkey-assert")
+    return {"exists": True, "available-methods": methods}
 
 def initiate_reidentify_by_mpxn(mpxn: str, initiating_duid: str, method: str,
                                   redirect_url: str = None,
