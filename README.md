@@ -1,8 +1,8 @@
 # Data Access Register (DAR)
 
-A production-ready implementation of the **Central Data Access Register** — a lightweight, open register of lawful customer energy data access across all UK GDPR legal bases, aligned to ISO/IEC TS 27560:2023.
+A demo-ready alpha implementation of the **Central Data Access Register** — a lightweight, open register of lawful customer energy data access across all UK GDPR legal bases, aligned to ISO/IEC TS 27560:2023.
 
-> **This is a design proposal under active development and not yet a production service.**  
+> **This is a design proposal under active development and not yet a production ready service.**  
 > To discuss the design, contact [contact@auth.energy](mailto:contact@auth.energy).
 
 **Docs:** [docs.auth.energy/data-access-register](https://docs.auth.energy/data-access-register)
