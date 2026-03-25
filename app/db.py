@@ -310,7 +310,8 @@ def initiate_reidentify_by_mpxn(mpxn: str, initiating_duid: str, method: str,
 
 def poll_reidentify_by_token_ref(token_ref: str, initiating_duid: str) -> tuple[dict | None, str]:
     """Poll cross-DUID re-identification status by token-ref alone (no ir needed).
-    Used by Data User B who holds a token-ref but not the ir key."""
+    Used by Data User B or a portal account who holds a token-ref but not the ir.
+    In the stub implementation, tokens are auto-confirmed on first poll."""
     all_irs = _find("dar_identity", {"type": "identity_record"}, 500)
     for doc in all_irs:
         tokens = doc.get("pending_reidentify_tokens", {})
@@ -319,6 +320,13 @@ def poll_reidentify_by_token_ref(token_ref: str, initiating_duid: str) -> tuple[
         token = tokens[token_ref]
         if token.get("initiating_duid") != initiating_duid:
             return None, "FORBIDDEN"
+        # Stub: auto-confirm pending tokens on first poll
+        if token.get("status") == "pending":
+            token["status"] = "confirmed"
+            token["confirmed_at"] = _now()
+            tokens[token_ref] = token
+            doc["pending_reidentify_tokens"] = tokens
+            _put("dar_identity", doc)
         return {
             "method":       token.get("method"),
             "status":       token.get("status", "pending"),
@@ -474,6 +482,13 @@ def poll_reidentify(ir: str, duid: str, token_ref: str) -> tuple[dict | None, st
     token = tokens.get(token_ref)
     if not token:
         return None, "NOT_FOUND"
+    # Stub: auto-confirm pending tokens on first poll
+    if token.get("status") == "pending":
+        token["status"] = "confirmed"
+        token["confirmed_at"] = _now()
+        tokens[token_ref] = token
+        doc["pending_reidentify_tokens"] = tokens
+        _put("dar_identity", doc)
     return {
         "method":       token["method"],
         "status":       token["status"],

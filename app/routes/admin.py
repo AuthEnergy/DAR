@@ -52,7 +52,7 @@ def create_account(token_payload):
         if not body.get(f):
             errors.append(f"'{f}' required")
 
-    valid_roles = {"data_user", "data_provider", "dcc", "admin"}
+    valid_roles = {"data_user", "data_provider", "dcc", "admin", "portal"}
     if body.get("role") and body["role"] not in valid_roles:
         errors.append(f"role must be one of {sorted(valid_roles)}")
 

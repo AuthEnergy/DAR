@@ -1197,34 +1197,24 @@ paths:
     get:
       operationId: listAccessRecords
       summary: List Access Records for a Meter Point
-      description: '<Warning>Could be fully disabled if [Central Portal](/dar/customer-portal)
-        is prefered mechanism</Warning>
+      description: 'Returns all Access Records and Discovered Records for a given
+        meter point.
 
 
-        Returns access records associated with a given MPxN, registered by the
-
-        authenticated Data User. Covers all legal bases and all lifecycle states
-
-        unless filtered. Supports customer transparency — customers may request
-
-        this list via any Controller to see who holds registered access to their
-
-        meter point data.
+        **Role: `data_user`** — scoped to MPxNs the caller has a registered Access
+        Record for (any state). Returns 403 if the caller has no record for the requested
+        MPxN. This prevents Data Users from querying arbitrary meter points.
 
 
-        `DISCOVERED` records submitted by the DCC are also returned in this
+        **Role: `portal`** — can query any MPxN, but must supply a confirmed `reidentification-token`
+        as a query parameter. The token proves the customer is present and has consented
+        to the lookup. Obtain the token via `POST /identity-records/reidentify`. The
+        token is consumed on use.
 
-        response, allowing customers to see organisations known to have accessed
 
-        their meter data historically that have not yet registered as Data Users.
-
-        DISCOVERED records are clearly distinguished by their `state` field and
-
-        contain only the sparse `discovered-access` object rather than a full
-
-        access record.
-
-        '
+        To allow customers to view all access records across all Data Users, Data
+        Users should redirect customers to the Central Customer Portal rather than
+        calling this endpoint themselves.'
       tags:
       - Data Users
       security:
@@ -1247,6 +1237,14 @@ paths:
         required: false
         schema:
           $ref: '#/components/schemas/LegalBasis'
+      - name: reidentification-token
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Required for `portal` role accounts. A confirmed token-ref obtained
+          via `POST /identity-records/reidentify`. Proves the customer is present.
+          Consumed on use — a new token is required for each portal session.
       responses:
         '200':
           description: Access record list returned successfully.
@@ -1257,7 +1255,13 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorised'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: 'For `data_user` role: no Access Record exists for this MPxN
+            under your account. For `portal` role: `reidentification-token` missing,
+            not confirmed, or expired.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
